@@ -1,267 +1,234 @@
 "use client"
-
 import { useAtom } from "jotai"
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Home,
+  LayoutDashboard,
   CheckSquare,
-  FolderOpen,
   Calendar,
   Users,
   BarChart3,
   MessageSquare,
   FileText,
-  Settings,
   Bell,
-  ChevronUp,
-  Monitor,
-  Moon,
-  Sun,
-  LogOut,
-  User,
-  Timer,
+  Settings,
+  FolderOpen,
+  Clock,
+  GitBranch,
+  GanttChart,
 } from "lucide-react"
-import { currentViewAtom, userAtom, unreadNotificationsAtom, themeAtom } from "@/lib/atoms"
-import { useTheme } from "next-themes"
+import { currentViewAtom } from "@/lib/atoms"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 
-const navigation = [
+const navigationItems = [
   {
-    title: "Main",
-    items: [
-      { title: "Overview", icon: Home, id: "overview" },
-      { title: "Tasks", icon: CheckSquare, id: "tasks" },
-      { title: "Projects", icon: FolderOpen, id: "projects" },
-      { title: "Calendar", icon: Calendar, id: "calendar" },
-      { title: "Time Tracking", icon: Timer, id: "time-tracking" },
-    ],
+    title: "Overview",
+    icon: LayoutDashboard,
+    view: "overview",
+    badge: null,
   },
   {
-    title: "Collaboration",
-    items: [
-      { title: "Team", icon: Users, id: "team" },
-      { title: "Messages", icon: MessageSquare, id: "messages" },
-      { title: "Documents", icon: FileText, id: "documents" },
-    ],
+    title: "Tasks",
+    icon: CheckSquare,
+    view: "tasks",
+    badge: "12",
   },
   {
-    title: "Insights",
-    items: [{ title: "Analytics", icon: BarChart3, id: "analytics" }],
+    title: "Projects",
+    icon: FolderOpen,
+    view: "projects",
+    badge: null,
+  },
+  {
+    title: "Calendar",
+    icon: Calendar,
+    view: "calendar",
+    badge: null,
+  },
+  {
+    title: "Team",
+    icon: Users,
+    view: "team",
+    badge: null,
+  },
+  {
+    title: "Analytics",
+    icon: BarChart3,
+    view: "analytics",
+    badge: null,
+  },
+  {
+    title: "Messages",
+    icon: MessageSquare,
+    view: "messages",
+    badge: "3",
+  },
+  {
+    title: "Documents",
+    icon: FileText,
+    view: "documents",
+    badge: null,
+  },
+  {
+    title: "Notifications",
+    icon: Bell,
+    view: "notifications",
+    badge: "5",
+  },
+]
+
+const projectTools = [
+  {
+    title: "Timeline",
+    icon: GanttChart,
+    view: "project-timeline",
+    badge: null,
+  },
+  {
+    title: "Dependencies",
+    icon: GitBranch,
+    view: "project-dependencies",
+    badge: null,
+  },
+  {
+    title: "Gantt Chart",
+    icon: GanttChart,
+    view: "project-gantt",
+    badge: null,
+  },
+  {
+    title: "Time Tracking",
+    icon: Clock,
+    view: "time-tracking",
+    badge: null,
   },
 ]
 
 export function DashboardSidebar() {
   const [currentView, setCurrentView] = useAtom(currentViewAtom)
-  const [user] = useAtom(userAtom)
-  const [unreadCount] = useAtom(unreadNotificationsAtom)
-  const [themePreference, setThemePreference] = useAtom(themeAtom)
-  const { setTheme } = useTheme()
-
-  const handleThemeChange = (newTheme: "light" | "dark" | "system") => {
-    setThemePreference(newTheme)
-    setTheme(newTheme)
-  }
-
-  const handleLogout = () => {
-    // In a real app, this would clear the user session
-    window.location.href = "/login"
-  }
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-2">
+    <Sidebar collapsible="icon" className="border-r">
+      <SidebarHeader className="border-b px-6 py-4">
+        <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
             <CheckSquare className="h-4 w-4" />
           </div>
-          <div className="flex flex-col group-data-[collapsible=icon]:hidden">
-            <span className="text-sm font-semibold">TaskFlow</span>
-            <span className="text-xs text-muted-foreground">Project Management</span>
+          <div className="group-data-[collapsible=icon]:hidden">
+            <h2 className="text-lg font-semibold">TaskPro</h2>
+            <p className="text-xs text-muted-foreground">Project Management</p>
           </div>
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
-        {navigation.map((group) => (
-          <SidebarGroup key={group.title}>
-            <SidebarGroupLabel>{group.title}</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      isActive={currentView === item.id}
-                      onClick={() => setCurrentView(item.id)}
-                      tooltip={item.title}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
-
-        {/* Notifications */}
+      <SidebarContent className="px-4 py-4">
         <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={currentView === "notifications"}
-                  onClick={() => setCurrentView("notifications")}
-                  tooltip="Notifications"
-                >
-                  <Bell className="h-4 w-4" />
-                  <span>Notifications</span>
-                  {unreadCount > 0 && (
-                    <Badge
-                      variant="destructive"
-                      className="ml-auto h-5 w-5 flex items-center justify-center p-0 text-xs group-data-[collapsible=icon]:hidden"
-                    >
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  isActive={currentView === "settings"}
-                  onClick={() => setCurrentView("settings")}
-                  tooltip="Settings"
-                >
-                  <Settings className="h-4 w-4" />
-                  <span>Settings</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {navigationItems.map((item) => (
+                <SidebarMenuItem key={item.view}>
+                  <SidebarMenuButton
+                    onClick={() => setCurrentView(item.view as any)}
+                    isActive={currentView === item.view}
+                    tooltip={item.title}
+                    className="w-full justify-start"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                    {item.badge && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 text-xs group-data-[collapsible=icon]:hidden"
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Theme Preferences */}
         <SidebarGroup>
-          <SidebarGroupLabel>Preferences</SidebarGroupLabel>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Project Tools</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {projectTools.map((item) => (
+                <SidebarMenuItem key={item.view}>
+                  <SidebarMenuButton
+                    onClick={() => setCurrentView(item.view as any)}
+                    isActive={currentView === item.view}
+                    tooltip={item.title}
+                    className="w-full justify-start"
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                    {item.badge && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 text-xs group-data-[collapsible=icon]:hidden"
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Settings</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton tooltip="Theme">
-                      {themePreference === "light" && <Sun className="h-4 w-4" />}
-                      {themePreference === "dark" && <Moon className="h-4 w-4" />}
-                      {themePreference === "system" && <Monitor className="h-4 w-4" />}
-                      <span>Theme</span>
-                      <ChevronUp className="ml-auto h-4 w-4 group-data-[collapsible=icon]:hidden" />
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
-                    <DropdownMenuItem onClick={() => handleThemeChange("light")}>
-                      <Sun className="h-4 w-4 mr-2" />
-                      Light
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleThemeChange("dark")}>
-                      <Moon className="h-4 w-4 mr-2" />
-                      Dark
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleThemeChange("system")}>
-                      <Monitor className="h-4 w-4 mr-2" />
-                      System
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <SidebarMenuButton
+                  onClick={() => setCurrentView("settings")}
+                  isActive={currentView === "settings"}
+                  tooltip="Settings"
+                  className="w-full justify-start"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter>
+      <SidebarFooter className="border-t px-4 py-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-                  tooltip={`${user?.name || "User"} - ${user?.email || "user@example.com"}`}
-                >
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
-                    <AvatarFallback className="rounded-lg">
-                      {user?.name
-                        ?.split(" ")
-                        .map((n) => n[0])
-                        .join("") || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
-                    <span className="truncate font-semibold">{user?.name || "User"}</span>
-                    <span className="truncate text-xs">{user?.email || "user@example.com"}</span>
-                  </div>
-                  <ChevronUp className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg"
-                side="bottom"
-                align="end"
-                sideOffset={4}
-              >
-                <DropdownMenuLabel className="p-0 font-normal">
-                  <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                    <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src={user?.avatar || "/placeholder.svg"} alt={user?.name} />
-                      <AvatarFallback className="rounded-lg">
-                        {user?.name
-                          ?.split(" ")
-                          .map((n) => n[0])
-                          .join("") || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">{user?.name || "User"}</span>
-                      <span className="truncate text-xs">{user?.email || "user@example.com"}</span>
-                    </div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setCurrentView("settings")}>
-                  <User className="h-4 w-4 mr-2" />
-                  Account Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout}>
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Log out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SidebarMenuButton className="w-full justify-start" tooltip="John Doe">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                <AvatarFallback>JD</AvatarFallback>
+              </Avatar>
+              <div className="group-data-[collapsible=icon]:hidden flex flex-col items-start">
+                <span className="text-sm font-medium">John Doe</span>
+                <span className="text-xs text-muted-foreground">john@example.com</span>
+              </div>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   )
