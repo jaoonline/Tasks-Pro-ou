@@ -1,161 +1,166 @@
 "use client"
-import { useAtom } from "jotai"
 import {
   LayoutDashboard,
   CheckSquare,
   Calendar,
   Users,
-  BarChart3,
   MessageSquare,
   FileText,
-  Bell,
+  BarChart3,
   Settings,
-  FolderOpen,
+  Bell,
+  User,
+  ChevronDown,
   Clock,
+  FolderKanban,
   GitBranch,
-  GanttChart,
+  Timer,
 } from "lucide-react"
-import { currentViewAtom } from "@/lib/atoms"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
+  SidebarMenuBadge,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 const navigationItems = [
   {
     title: "Overview",
     icon: LayoutDashboard,
-    view: "overview",
+    id: "overview",
     badge: null,
   },
   {
     title: "Tasks",
     icon: CheckSquare,
-    view: "tasks",
+    id: "tasks",
     badge: "12",
   },
   {
     title: "Projects",
-    icon: FolderOpen,
-    view: "projects",
+    icon: FolderKanban,
+    id: "projects",
     badge: null,
   },
   {
     title: "Calendar",
     icon: Calendar,
-    view: "calendar",
+    id: "calendar",
     badge: null,
   },
   {
     title: "Team",
     icon: Users,
-    view: "team",
+    id: "team",
     badge: null,
   },
-  {
-    title: "Analytics",
-    icon: BarChart3,
-    view: "analytics",
-    badge: null,
-  },
+]
+
+const toolsItems = [
   {
     title: "Messages",
     icon: MessageSquare,
-    view: "messages",
+    id: "messages",
     badge: "3",
   },
   {
     title: "Documents",
     icon: FileText,
-    view: "documents",
+    id: "documents",
+    badge: null,
+  },
+  {
+    title: "Analytics",
+    icon: BarChart3,
+    id: "analytics",
     badge: null,
   },
   {
     title: "Notifications",
     icon: Bell,
-    view: "notifications",
+    id: "notifications",
     badge: "5",
   },
 ]
 
-const projectTools = [
+const projectManagementItems = [
   {
     title: "Timeline",
-    icon: GanttChart,
-    view: "project-timeline",
+    icon: Clock,
+    id: "timeline",
     badge: null,
   },
   {
     title: "Dependencies",
     icon: GitBranch,
-    view: "project-dependencies",
+    id: "dependencies",
     badge: null,
   },
   {
     title: "Gantt Chart",
-    icon: GanttChart,
-    view: "project-gantt",
+    icon: BarChart3,
+    id: "gantt",
     badge: null,
   },
   {
     title: "Time Tracking",
-    icon: Clock,
-    view: "time-tracking",
+    icon: Timer,
+    id: "time-tracking",
     badge: null,
   },
 ]
 
-export function DashboardSidebar() {
-  const [currentView, setCurrentView] = useAtom(currentViewAtom)
+interface DashboardSidebarProps {
+  activeView: string
+  onViewChange: (view: string) => void
+}
 
+export function DashboardSidebar({ activeView, onViewChange }: DashboardSidebarProps) {
   return (
     <Sidebar collapsible="icon" className="border-r">
-      <SidebarHeader className="border-b px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <CheckSquare className="h-4 w-4" />
-          </div>
-          <div className="group-data-[collapsible=icon]:hidden">
-            <h2 className="text-lg font-semibold">TaskPro</h2>
-            <p className="text-xs text-muted-foreground">Project Management</p>
-          </div>
-        </div>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <div className="flex items-center gap-2">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <CheckSquare className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">TaskPro</span>
+                  <span className="truncate text-xs">Enterprise</span>
+                </div>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-4 py-4">
+      <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.view}>
+                <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => setCurrentView(item.view as any)}
-                    isActive={currentView === item.view}
                     tooltip={item.title}
-                    className="w-full justify-start"
+                    onClick={() => onViewChange(item.id)}
+                    isActive={activeView === item.id}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    {item.badge && (
-                      <Badge
-                        variant="secondary"
-                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 text-xs group-data-[collapsible=icon]:hidden"
-                      >
-                        {item.badge}
-                      </Badge>
-                    )}
+                    <item.icon className="size-4" />
+                    <span>{item.title}</span>
+                    {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -164,27 +169,19 @@ export function DashboardSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Project Tools</SidebarGroupLabel>
+          <SidebarGroupLabel>Tools</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {projectTools.map((item) => (
-                <SidebarMenuItem key={item.view}>
+              {toolsItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton
-                    onClick={() => setCurrentView(item.view as any)}
-                    isActive={currentView === item.view}
                     tooltip={item.title}
-                    className="w-full justify-start"
+                    onClick={() => onViewChange(item.id)}
+                    isActive={activeView === item.id}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    {item.badge && (
-                      <Badge
-                        variant="secondary"
-                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full p-0 text-xs group-data-[collapsible=icon]:hidden"
-                      >
-                        {item.badge}
-                      </Badge>
-                    )}
+                    <item.icon className="size-4" />
+                    <span>{item.title}</span>
+                    {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -193,18 +190,38 @@ export function DashboardSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="group-data-[collapsible=icon]:hidden">Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>Project Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {projectManagementItems.map((item) => (
+                <SidebarMenuItem key={item.id}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    onClick={() => onViewChange(item.id)}
+                    isActive={activeView === item.id}
+                  >
+                    <item.icon className="size-4" />
+                    <span>{item.title}</span>
+                    {item.badge && <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  onClick={() => setCurrentView("settings")}
-                  isActive={currentView === "settings"}
                   tooltip="Settings"
-                  className="w-full justify-start"
+                  onClick={() => onViewChange("settings")}
+                  isActive={activeView === "settings"}
                 >
-                  <Settings className="h-4 w-4" />
-                  <span className="group-data-[collapsible=icon]:hidden">Settings</span>
+                  <Settings className="size-4" />
+                  <span>Settings</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -212,23 +229,46 @@ export function DashboardSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t px-4 py-4">
+      <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="w-full justify-start" tooltip="John Doe">
-              <Avatar className="h-6 w-6">
-                <AvatarImage src="/placeholder-user.jpg" alt="User" />
-                <AvatarFallback>JD</AvatarFallback>
-              </Avatar>
-              <div className="group-data-[collapsible=icon]:hidden flex flex-col items-start">
-                <span className="text-sm font-medium">John Doe</span>
-                <span className="text-xs text-muted-foreground">john@example.com</span>
-              </div>
-            </SidebarMenuButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src="/placeholder-user.jpg" alt="User" />
+                    <AvatarFallback className="rounded-lg">JD</AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">John Doe</span>
+                    <span className="truncate text-xs">john@example.com</span>
+                  </div>
+                  <ChevronDown className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuItem>
+                  <User className="mr-2 h-4 w-4" />
+                  Account
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem>Sign out</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-
       <SidebarRail />
     </Sidebar>
   )
