@@ -25,8 +25,11 @@ import {
   FileText,
   Download,
   SlidersHorizontal,
+  Link,
 } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useAtom } from "jotai"
+import { currentViewAtom } from "@/lib/atoms"
 
 interface Project {
   id: string
@@ -67,6 +70,7 @@ interface ProjectDetailsViewProps {
 export function ProjectDetailsView({ projectId, onBack }: ProjectDetailsViewProps) {
   const [project, setProject] = useState<Project | null>(null)
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
+  const [, setCurrentView] = useAtom(currentViewAtom)
   const router = useRouter()
 
   useEffect(() => {
@@ -178,6 +182,10 @@ export function ProjectDetailsView({ projectId, onBack }: ProjectDetailsViewProp
       style: "currency",
       currency: "USD",
     }).format(amount)
+  }
+
+  const handleLinkToTasks = () => {
+    setCurrentView("tasks")
   }
 
   const daysRemaining = Math.ceil((new Date(project.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
@@ -456,6 +464,10 @@ export function ProjectDetailsView({ projectId, onBack }: ProjectDetailsViewProp
               <CardTitle className="text-lg">Quick Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
+              <Button className="w-full bg-transparent" variant="outline" onClick={handleLinkToTasks}>
+                <Link className="h-4 w-4 mr-2" />
+                Link to Tasks
+              </Button>
               <Button
                 className="w-full bg-transparent"
                 variant="outline"

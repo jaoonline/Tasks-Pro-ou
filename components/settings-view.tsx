@@ -39,6 +39,14 @@ import {
   AlertCircle,
   Loader2,
   Building2,
+  Github,
+  Smartphone,
+  QrCode,
+  Copy,
+  Check,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react"
 
 interface TeamMember {
@@ -54,6 +62,16 @@ interface TeamMember {
   invitationDate?: string
 }
 
+interface Department {
+  id: string
+  name: string
+  description: string
+  manager: string
+  memberCount: number
+  budget?: number
+  color: string
+}
+
 interface InvitationStatus {
   type: "success" | "error" | "info"
   message: string
@@ -63,11 +81,21 @@ export function SettingsView() {
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(false)
   const [weeklyReports, setWeeklyReports] = useState(true)
+  const [theme, setTheme] = useState("system")
+  const [language, setLanguage] = useState("en")
+  const [fontSize, setFontSize] = useState("medium")
+  const [compactMode, setCompactMode] = useState(false)
   const [isNewTeamDialogOpen, setIsNewTeamDialogOpen] = useState(false)
   const [isEditTeamDialogOpen, setIsEditTeamDialogOpen] = useState(false)
+  const [is2FADialogOpen, setIs2FADialogOpen] = useState(false)
+  const [isDepartmentDialogOpen, setIsDepartmentDialogOpen] = useState(false)
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null)
   const [isInviting, setIsInviting] = useState(false)
   const [invitationStatus, setInvitationStatus] = useState<InvitationStatus | null>(null)
+  const [twoFAStep, setTwoFAStep] = useState(1)
+  const [qrCodeCopied, setQrCodeCopied] = useState(false)
+  const [backupCodesCopied, setBackupCodesCopied] = useState(false)
+  const [githubConnected, setGithubConnected] = useState(false)
   const [newTeamMember, setNewTeamMember] = useState({
     name: "",
     email: "",
@@ -75,6 +103,14 @@ export function SettingsView() {
     department: "",
     sendInvitation: true,
     customMessage: "",
+  })
+
+  const [newDepartment, setNewDepartment] = useState({
+    name: "",
+    description: "",
+    manager: "",
+    budget: "",
+    color: "#3b82f6",
   })
 
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([
@@ -124,14 +160,63 @@ export function SettingsView() {
     },
   ])
 
+  const [departments, setDepartments] = useState<Department[]>([
+    {
+      id: "1",
+      name: "Engineering",
+      description: "Software development and technical operations",
+      manager: "John Doe",
+      memberCount: 12,
+      budget: 150000,
+      color: "#3b82f6",
+    },
+    {
+      id: "2",
+      name: "Design",
+      description: "User experience and visual design",
+      manager: "Jane Smith",
+      memberCount: 8,
+      budget: 80000,
+      color: "#8b5cf6",
+    },
+    {
+      id: "3",
+      name: "Marketing",
+      description: "Brand promotion and customer acquisition",
+      manager: "Mike Johnson",
+      memberCount: 6,
+      budget: 120000,
+      color: "#10b981",
+    },
+    {
+      id: "4",
+      name: "Sales",
+      description: "Revenue generation and client relations",
+      manager: "Sarah Wilson",
+      memberCount: 10,
+      budget: 200000,
+      color: "#f59e0b",
+    },
+  ])
+
+  const mockQRCode = "JBSWY3DPEHPK3PXP"
+  const mockBackupCodes = [
+    "1a2b-3c4d-5e6f",
+    "7g8h-9i0j-1k2l",
+    "3m4n-5o6p-7q8r",
+    "9s0t-1u2v-3w4x",
+    "5y6z-7a8b-9c0d",
+    "1e2f-3g4h-5i6j",
+    "7k8l-9m0n-1o2p",
+    "3q4r-5s6t-7u8v",
+  ]
+
   const sendInvitationEmail = async (member: TeamMember, customMessage?: string) => {
     setIsInviting(true)
 
-    // Simulate API call to send invitation email
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      // In a real application, this would be an API call
       console.log("Sending invitation email to:", member.email)
       console.log("Role:", member.role)
       console.log("Department:", member.department)
@@ -174,7 +259,6 @@ export function SettingsView() {
       invitationSent: false,
     }
 
-    // Send invitation if requested
     if (newTeamMember.sendInvitation) {
       const invitationSent = await sendInvitationEmail(member, newTeamMember.customMessage)
       if (invitationSent) {
@@ -196,6 +280,32 @@ export function SettingsView() {
     if (!newTeamMember.sendInvitation || invitationStatus?.type === "success") {
       setIsNewTeamDialogOpen(false)
     }
+  }
+
+  const handleAddDepartment = () => {
+    if (!newDepartment.name.trim() || !newDepartment.description.trim() || !newDepartment.manager) {
+      return
+    }
+
+    const department: Department = {
+      id: Date.now().toString(),
+      name: newDepartment.name,
+      description: newDepartment.description,
+      manager: newDepartment.manager,
+      memberCount: 0,
+      budget: newDepartment.budget ? Number.parseInt(newDepartment.budget) : undefined,
+      color: newDepartment.color,
+    }
+
+    setDepartments([...departments, department])
+    setNewDepartment({
+      name: "",
+      description: "",
+      manager: "",
+      budget: "",
+      color: "#3b82f6",
+    })
+    setIsDepartmentDialogOpen(false)
   }
 
   const handleEditTeamMember = () => {
@@ -228,6 +338,25 @@ export function SettingsView() {
     setIsEditTeamDialogOpen(true)
   }
 
+  const copyToClipboard = async (text: string, setCopied: (value: boolean) => void) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error("Failed to copy text: ", err)
+    }
+  }
+
+  const handleConnectGithub = () => {
+    // Simulate GitHub OAuth flow
+    setGithubConnected(true)
+  }
+
+  const handleDisconnectGithub = () => {
+    setGithubConnected(false)
+  }
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "admin":
@@ -258,6 +387,17 @@ export function SettingsView() {
         return "secondary"
       default:
         return "outline"
+    }
+  }
+
+  const getThemeIcon = (themeValue: string) => {
+    switch (themeValue) {
+      case "light":
+        return <Sun className="h-4 w-4" />
+      case "dark":
+        return <Moon className="h-4 w-4" />
+      default:
+        return <Monitor className="h-4 w-4" />
     }
   }
 
@@ -439,7 +579,156 @@ export function SettingsView() {
                       <p className="font-medium">Two-Factor Authentication</p>
                       <p className="text-sm text-muted-foreground">Secure your account with 2FA</p>
                     </div>
-                    <Button variant="outline">Enable 2FA</Button>
+                    <Dialog open={is2FADialogOpen} onOpenChange={setIs2FADialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="outline">Enable 2FA</Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[500px]">
+                        <DialogHeader>
+                          <DialogTitle>Enable Two-Factor Authentication</DialogTitle>
+                          <DialogDescription>
+                            Secure your account with two-factor authentication using an authenticator app.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-6">
+                          {twoFAStep === 1 && (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <h3 className="text-lg font-semibold mb-2">Step 1: Install Authenticator App</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Install an authenticator app like Google Authenticator, Authy, or 1Password on your
+                                  mobile device.
+                                </p>
+                                <div className="flex justify-center space-x-4">
+                                  <div className="text-center">
+                                    <Smartphone className="h-8 w-8 mx-auto mb-2" />
+                                    <p className="text-xs">Google Authenticator</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <Smartphone className="h-8 w-8 mx-auto mb-2" />
+                                    <p className="text-xs">Authy</p>
+                                  </div>
+                                  <div className="text-center">
+                                    <Smartphone className="h-8 w-8 mx-auto mb-2" />
+                                    <p className="text-xs">1Password</p>
+                                  </div>
+                                </div>
+                              </div>
+                              <Button onClick={() => setTwoFAStep(2)} className="w-full">
+                                Continue
+                              </Button>
+                            </div>
+                          )}
+
+                          {twoFAStep === 2 && (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <h3 className="text-lg font-semibold mb-2">Step 2: Scan QR Code</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Scan this QR code with your authenticator app, or enter the code manually.
+                                </p>
+                                <div className="bg-white p-4 rounded-lg border inline-block">
+                                  <QrCode className="h-32 w-32" />
+                                </div>
+                                <div className="mt-4 p-3 bg-muted rounded-lg">
+                                  <div className="flex items-center justify-between">
+                                    <code className="text-sm font-mono">{mockQRCode}</code>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => copyToClipboard(mockQRCode, setQrCodeCopied)}
+                                    >
+                                      {qrCodeCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button variant="outline" onClick={() => setTwoFAStep(1)} className="flex-1">
+                                  Back
+                                </Button>
+                                <Button onClick={() => setTwoFAStep(3)} className="flex-1">
+                                  Continue
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {twoFAStep === 3 && (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <h3 className="text-lg font-semibold mb-2">Step 3: Verify Setup</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Enter the 6-digit code from your authenticator app to verify the setup.
+                                </p>
+                                <Input
+                                  placeholder="Enter 6-digit code"
+                                  className="text-center text-lg tracking-widest"
+                                  maxLength={6}
+                                />
+                              </div>
+                              <div className="flex space-x-2">
+                                <Button variant="outline" onClick={() => setTwoFAStep(2)} className="flex-1">
+                                  Back
+                                </Button>
+                                <Button onClick={() => setTwoFAStep(4)} className="flex-1">
+                                  Verify
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+
+                          {twoFAStep === 4 && (
+                            <div className="space-y-4">
+                              <div className="text-center">
+                                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                                <h3 className="text-lg font-semibold mb-2">2FA Enabled Successfully!</h3>
+                                <p className="text-sm text-muted-foreground mb-4">
+                                  Save these backup codes in a safe place. You can use them to access your account if
+                                  you lose your authenticator device.
+                                </p>
+                                <div className="bg-muted p-4 rounded-lg">
+                                  <div className="grid grid-cols-2 gap-2 text-sm font-mono">
+                                    {mockBackupCodes.map((code, index) => (
+                                      <div key={index} className="text-center">
+                                        {code}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3 w-full bg-transparent"
+                                    onClick={() => copyToClipboard(mockBackupCodes.join("\n"), setBackupCodesCopied)}
+                                  >
+                                    {backupCodesCopied ? (
+                                      <>
+                                        <Check className="h-4 w-4 mr-2" />
+                                        Copied!
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="h-4 w-4 mr-2" />
+                                        Copy Backup Codes
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                              <Button
+                                onClick={() => {
+                                  setIs2FADialogOpen(false)
+                                  setTwoFAStep(1)
+                                }}
+                                className="w-full"
+                              >
+                                Done
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </CardContent>
               </Card>
@@ -451,35 +740,100 @@ export function SettingsView() {
                   <CardTitle>Appearance Settings</CardTitle>
                   <CardDescription>Customize the look and feel of your dashboard.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
+                <CardContent className="space-y-6">
+                  <div className="space-y-3">
                     <Label htmlFor="theme">Theme</Label>
-                    <Select defaultValue="system">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select theme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
-                        <SelectItem value="system">System</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="grid grid-cols-3 gap-3">
+                      {["light", "dark", "system"].map((themeOption) => (
+                        <div
+                          key={themeOption}
+                          className={`relative cursor-pointer rounded-lg border-2 p-4 ${
+                            theme === themeOption ? "border-primary" : "border-muted"
+                          }`}
+                          onClick={() => setTheme(themeOption)}
+                        >
+                          <div className="flex flex-col items-center space-y-2">
+                            {getThemeIcon(themeOption)}
+                            <span className="text-sm font-medium capitalize">{themeOption}</span>
+                          </div>
+                          {theme === themeOption && (
+                            <div className="absolute top-2 right-2">
+                              <CheckCircle className="h-4 w-4 text-primary" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
+
+                  <div className="space-y-3">
                     <Label htmlFor="language">Language</Label>
-                    <Select defaultValue="en">
+                    <Select value={language} onValueChange={setLanguage}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select language" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="en">English</SelectItem>
-                        <SelectItem value="es">Spanish</SelectItem>
-                        <SelectItem value="fr">French</SelectItem>
-                        <SelectItem value="de">German</SelectItem>
+                        <SelectItem value="en">🇺🇸 English</SelectItem>
+                        <SelectItem value="es">🇪🇸 Spanish</SelectItem>
+                        <SelectItem value="fr">🇫🇷 French</SelectItem>
+                        <SelectItem value="de">🇩🇪 German</SelectItem>
+                        <SelectItem value="ja">🇯🇵 Japanese</SelectItem>
+                        <SelectItem value="zh">🇨🇳 Chinese</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button>Save Changes</Button>
+
+                  <div className="space-y-3">
+                    <Label htmlFor="fontSize">Font Size</Label>
+                    <Select value={fontSize} onValueChange={setFontSize}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select font size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="large">Large</SelectItem>
+                        <SelectItem value="extra-large">Extra Large</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label htmlFor="compact-mode">Compact Mode</Label>
+                      <p className="text-sm text-muted-foreground">Reduce spacing and padding for a denser layout</p>
+                    </div>
+                    <Switch id="compact-mode" checked={compactMode} onCheckedChange={setCompactMode} />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label>Color Accent</Label>
+                    <div className="grid grid-cols-6 gap-2">
+                      {[
+                        "#3b82f6",
+                        "#8b5cf6",
+                        "#10b981",
+                        "#f59e0b",
+                        "#ef4444",
+                        "#ec4899",
+                        "#06b6d4",
+                        "#84cc16",
+                        "#f97316",
+                        "#6366f1",
+                        "#14b8a6",
+                        "#f43f5e",
+                      ].map((color) => (
+                        <div
+                          key={color}
+                          className="w-8 h-8 rounded-full cursor-pointer border-2 border-muted hover:scale-110 transition-transform"
+                          style={{ backgroundColor: color }}
+                          onClick={() => console.log("Color selected:", color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button>Save Appearance Settings</Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -503,6 +857,7 @@ export function SettingsView() {
                     </div>
                     <Button variant="outline">Connect</Button>
                   </div>
+
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
@@ -515,83 +870,179 @@ export function SettingsView() {
                     </div>
                     <Button variant="outline">Connected</Button>
                   </div>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
+                        <Github className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium">GitHub</p>
+                        <p className="text-sm text-muted-foreground">Code repository and project management</p>
+                        {githubConnected && <p className="text-xs text-green-600">Connected as @johndoe</p>}
+                      </div>
+                    </div>
+                    {githubConnected ? (
+                      <Button variant="outline" onClick={handleDisconnectGithub}>
+                        Disconnect
+                      </Button>
+                    ) : (
+                      <Button onClick={handleConnectGithub}>Connect</Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                        <Globe className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium">Figma</p>
+                        <p className="text-sm text-muted-foreground">Design collaboration</p>
+                      </div>
+                    </div>
+                    <Button variant="outline">Connect</Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
             <TabsContent value="department" className="space-y-6 mt-0">
               <Card>
-                <CardHeader>
-                  <CardTitle>Department Management</CardTitle>
-                  <CardDescription>Manage departments and organizational structure.</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Department Management</CardTitle>
+                    <CardDescription>Manage departments and organizational structure.</CardDescription>
+                  </div>
+                  <Dialog open={isDepartmentDialogOpen} onOpenChange={setIsDepartmentDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Department
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[500px]">
+                      <DialogHeader>
+                        <DialogTitle>Add New Department</DialogTitle>
+                        <DialogDescription>Create a new department in your organization.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div>
+                          <Label htmlFor="dept-name">Department Name</Label>
+                          <Input
+                            id="dept-name"
+                            value={newDepartment.name}
+                            onChange={(e) => setNewDepartment({ ...newDepartment, name: e.target.value })}
+                            placeholder="Enter department name"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="dept-description">Description</Label>
+                          <Textarea
+                            id="dept-description"
+                            value={newDepartment.description}
+                            onChange={(e) => setNewDepartment({ ...newDepartment, description: e.target.value })}
+                            placeholder="Enter department description"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="dept-manager">Department Manager</Label>
+                            <Select
+                              value={newDepartment.manager}
+                              onValueChange={(value) => setNewDepartment({ ...newDepartment, manager: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select manager" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {teamMembers
+                                  .filter((member) => member.role === "manager" || member.role === "admin")
+                                  .map((member) => (
+                                    <SelectItem key={member.id} value={member.name}>
+                                      {member.name}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <Label htmlFor="dept-budget">Annual Budget (Optional)</Label>
+                            <Input
+                              id="dept-budget"
+                              type="number"
+                              value={newDepartment.budget}
+                              onChange={(e) => setNewDepartment({ ...newDepartment, budget: e.target.value })}
+                              placeholder="Enter budget"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <Label htmlFor="dept-color">Department Color</Label>
+                          <div className="flex items-center space-x-2 mt-2">
+                            <input
+                              type="color"
+                              value={newDepartment.color}
+                              onChange={(e) => setNewDepartment({ ...newDepartment, color: e.target.value })}
+                              className="w-8 h-8 rounded border"
+                            />
+                            <Input
+                              value={newDepartment.color}
+                              onChange={(e) => setNewDepartment({ ...newDepartment, color: e.target.value })}
+                              placeholder="#3b82f6"
+                              className="flex-1"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex space-x-2 pt-4">
+                          <Button variant="outline" onClick={() => setIsDepartmentDialogOpen(false)} className="flex-1">
+                            Cancel
+                          </Button>
+                          <Button onClick={handleAddDepartment} className="flex-1">
+                            Add Department
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">Engineering</h3>
-                        <Badge variant="secondary">12 members</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Software development and technical operations
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">JD</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">John Doe - Manager</span>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">Design</h3>
-                        <Badge variant="secondary">8 members</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">User experience and visual design</p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">JS</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">Jane Smith - Manager</span>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">Marketing</h3>
-                        <Badge variant="secondary">6 members</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">Brand promotion and customer acquisition</p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">MJ</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">Mike Johnson - Lead</span>
-                      </div>
-                    </Card>
-
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <h3 className="font-semibold">Sales</h3>
-                        <Badge variant="secondary">10 members</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-3">Revenue generation and client relations</p>
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-6 w-6">
-                          <AvatarFallback className="text-xs">SW</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm">Sarah Wilson - Director</span>
-                      </div>
-                    </Card>
+                    {departments.map((department) => (
+                      <Card key={department.id} className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: department.color }}></div>
+                            <h3 className="font-semibold">{department.name}</h3>
+                          </div>
+                          <Badge variant="secondary">{department.memberCount} members</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-3">{department.description}</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback className="text-xs">
+                                {department.manager
+                                  .split(" ")
+                                  .map((n) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{department.manager} - Manager</span>
+                          </div>
+                          {department.budget && (
+                            <div className="text-sm text-muted-foreground">
+                              Budget: ${department.budget.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
                   </div>
 
                   <div className="flex gap-2 pt-4">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Department
-                    </Button>
                     <Button variant="outline">Manage Structure</Button>
+                    <Button variant="outline">Export Data</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -709,12 +1160,11 @@ export function SettingsView() {
                                 <SelectValue placeholder="Select department" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="Engineering">Engineering</SelectItem>
-                                <SelectItem value="Design">Design</SelectItem>
-                                <SelectItem value="Marketing">Marketing</SelectItem>
-                                <SelectItem value="Sales">Sales</SelectItem>
-                                <SelectItem value="Product">Product</SelectItem>
-                                <SelectItem value="Operations">Operations</SelectItem>
+                                {departments.map((dept) => (
+                                  <SelectItem key={dept.id} value={dept.name}>
+                                    {dept.name}
+                                  </SelectItem>
+                                ))}
                               </SelectContent>
                             </Select>
                           </div>
@@ -949,12 +1399,11 @@ export function SettingsView() {
                               <SelectValue placeholder="Select department" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="Engineering">Engineering</SelectItem>
-                              <SelectItem value="Design">Design</SelectItem>
-                              <SelectItem value="Marketing">Marketing</SelectItem>
-                              <SelectItem value="Sales">Sales</SelectItem>
-                              <SelectItem value="Product">Product</SelectItem>
-                              <SelectItem value="Operations">Operations</SelectItem>
+                              {departments.map((dept) => (
+                                <SelectItem key={dept.id} value={dept.name}>
+                                  {dept.name}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>

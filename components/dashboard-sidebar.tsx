@@ -1,6 +1,8 @@
 "use client"
 import { useAtom } from "jotai"
 import { currentViewAtom } from "@/lib/atoms"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Sidebar,
   SidebarContent,
@@ -12,10 +14,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,63 +31,137 @@ import {
   FolderOpen,
   Calendar,
   Users,
+  BarChart3,
   MessageSquare,
   FileText,
-  BarChart3,
   Bell,
   Settings,
   Clock,
   GitBranch,
   GanttChartIcon as Gantt,
-  TimerIcon as Timeline,
+  Network,
   ChevronUp,
-  LogOut,
   User,
+  LogOut,
+  HelpCircle,
 } from "lucide-react"
 
 const navigationItems = [
-  { id: "overview", label: "Overview", icon: Home },
-  { id: "tasks", label: "Tasks", icon: CheckSquare, badge: "12" },
-  { id: "projects", label: "Projects", icon: FolderOpen },
-  { id: "calendar", label: "Calendar", icon: Calendar },
-  { id: "team", label: "Team", icon: Users },
+  {
+    title: "Overview",
+    url: "#",
+    icon: Home,
+    view: "overview",
+  },
+  {
+    title: "Tasks",
+    url: "#",
+    icon: CheckSquare,
+    view: "tasks",
+    badge: "12",
+  },
+  {
+    title: "Projects",
+    url: "#",
+    icon: FolderOpen,
+    view: "projects",
+  },
+  {
+    title: "Calendar",
+    url: "#",
+    icon: Calendar,
+    view: "calendar",
+  },
+  {
+    title: "Team",
+    url: "#",
+    icon: Users,
+    view: "team",
+  },
 ]
 
 const toolsItems = [
-  { id: "messages", label: "Messages", icon: MessageSquare, badge: "3" },
-  { id: "documents", label: "Documents", icon: FileText },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "notifications", label: "Notifications", icon: Bell, badge: "5" },
+  {
+    title: "Analytics",
+    url: "#",
+    icon: BarChart3,
+    view: "analytics",
+  },
+  {
+    title: "Messages",
+    url: "#",
+    icon: MessageSquare,
+    view: "messages",
+    badge: "3",
+  },
+  {
+    title: "Documents",
+    url: "#",
+    icon: FileText,
+    view: "documents",
+  },
+  {
+    title: "Time Tracking",
+    url: "#",
+    icon: Clock,
+    view: "time-tracking",
+  },
 ]
 
 const projectManagementItems = [
-  { id: "timeline", label: "Timeline", icon: Timeline },
-  { id: "gantt", label: "Gantt Chart", icon: Gantt },
-  { id: "dependencies", label: "Dependencies", icon: GitBranch },
-  { id: "time-tracking", label: "Time Tracking", icon: Clock },
+  {
+    title: "Timeline",
+    url: "#",
+    icon: GitBranch,
+    view: "timeline",
+  },
+  {
+    title: "Gantt Chart",
+    url: "#",
+    icon: Gantt,
+    view: "gantt",
+  },
+  {
+    title: "Dependencies",
+    url: "#",
+    icon: Network,
+    view: "dependencies",
+  },
 ]
 
-const settingsItems = [{ id: "settings", label: "Settings", icon: Settings }]
+const settingsItems = [
+  {
+    title: "Notifications",
+    url: "#",
+    icon: Bell,
+    view: "notifications",
+    badge: "5",
+  },
+  {
+    title: "Settings",
+    url: "#",
+    icon: Settings,
+    view: "settings",
+  },
+]
 
 export function DashboardSidebar() {
   const [currentView, setCurrentView] = useAtom(currentViewAtom)
 
-  const handleViewChange = (viewId: string) => {
-    setCurrentView(viewId)
+  const handleViewChange = (view: string) => {
+    setCurrentView(view)
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="border-r">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <CheckSquare className="h-4 w-4" />
+          <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+            <CheckSquare className="size-4" />
           </div>
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-semibold group-data-[collapsible=icon]:hidden">TasksPro</span>
-            <span className="truncate text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-              Project Management
-            </span>
+            <span className="truncate font-semibold">TasksPro</span>
+            <span className="truncate text-xs">Project Management</span>
           </div>
           <SidebarTrigger className="ml-auto" />
         </div>
@@ -98,16 +173,19 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => handleViewChange(item.id)}
-                    isActive={currentView === item.id}
-                    tooltip={item.label}
+                    tooltip={item.title}
+                    onClick={() => handleViewChange(item.view)}
+                    isActive={currentView === item.view}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    <item.icon />
+                    <span>{item.title}</span>
                     {item.badge && (
-                      <Badge variant="secondary" className="ml-auto group-data-[collapsible=icon]:hidden">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
+                      >
                         {item.badge}
                       </Badge>
                     )}
@@ -123,16 +201,19 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {toolsItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => handleViewChange(item.id)}
-                    isActive={currentView === item.id}
-                    tooltip={item.label}
+                    tooltip={item.title}
+                    onClick={() => handleViewChange(item.view)}
+                    isActive={currentView === item.view}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    <item.icon />
+                    <span>{item.title}</span>
                     {item.badge && (
-                      <Badge variant="secondary" className="ml-auto group-data-[collapsible=icon]:hidden">
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
+                      >
                         {item.badge}
                       </Badge>
                     )}
@@ -148,14 +229,14 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {projectManagementItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => handleViewChange(item.id)}
-                    isActive={currentView === item.id}
-                    tooltip={item.label}
+                    tooltip={item.title}
+                    onClick={() => handleViewChange(item.view)}
+                    isActive={currentView === item.view}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    <item.icon />
+                    <span>{item.title}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -168,14 +249,22 @@ export function DashboardSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.id}>
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
-                    onClick={() => handleViewChange(item.id)}
-                    isActive={currentView === item.id}
-                    tooltip={item.label}
+                    tooltip={item.title}
+                    onClick={() => handleViewChange(item.view)}
+                    isActive={currentView === item.view}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span className="group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    <item.icon />
+                    <span>{item.title}</span>
+                    {item.badge && (
+                      <Badge
+                        variant="secondary"
+                        className="ml-auto h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs"
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -194,13 +283,14 @@ export function DashboardSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src="/placeholder.svg" alt="John Doe" />
                     <AvatarFallback className="rounded-lg">JD</AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
+                  <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">John Doe</span>
-                    <span className="truncate text-xs">john@company.com</span>
+                    <span className="truncate text-xs">john.doe@company.com</span>
                   </div>
-                  <ChevronUp className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
+                  <ChevronUp className="ml-auto size-4" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -212,33 +302,39 @@ export function DashboardSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
+                      <AvatarImage src="/placeholder.svg" alt="John Doe" />
                       <AvatarFallback className="rounded-lg">JD</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">John Doe</span>
-                      <span className="truncate text-xs">john@company.com</span>
+                      <span className="truncate text-xs">john.doe@company.com</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <User className="mr-2 h-4 w-4" />
-                  Profile
+                  <span>Account</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleViewChange("settings")}>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  <HelpCircle className="mr-2 h-4 w-4" />
+                  <span>Support</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
                   <LogOut className="mr-2 h-4 w-4" />
-                  Log out
+                  <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }
