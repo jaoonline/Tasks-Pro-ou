@@ -93,6 +93,13 @@ export function MessagesView() {
   const [isEditChannelOpen, setIsEditChannelOpen] = useState(false)
   const [editingChannel, setEditingChannel] = useState<GroupChannel | null>(null)
 
+  // Call management state
+  const [isCallActive, setIsCallActive] = useState(false)
+  const [callType, setCallType] = useState<"audio" | "video" | null>(null)
+  const [isMuted, setIsMuted] = useState(false)
+  const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  const [callDuration, setCallDuration] = useState(0)
+
   // Team members data
   const teamMembers: TeamMember[] = [
     {
@@ -379,6 +386,44 @@ export function MessagesView() {
     setIsEditChannelOpen(true)
   }
 
+  const handleStartCall = (type: "audio" | "video") => {
+    setCallType(type)
+    setIsCallActive(true)
+    setCallDuration(0)
+
+    // Start call duration timer
+    const interval = setInterval(() => {
+      setCallDuration((prev) => prev + 1)
+    }, 1000)
+
+    // Store interval ID for cleanup
+    ;(window as any).callInterval = interval
+
+    toast.success(`${type === "audio" ? "Audio" : "Video"} call started`)
+  }
+
+  const handleEndCall = () => {
+    if ((window as any).callInterval) {
+      clearInterval((window as any).callInterval)
+    }
+    setIsCallActive(false)
+    setCallType(null)
+    setIsMuted(false)
+    setIsVideoEnabled(true)
+    setCallDuration(0)
+    toast.success("Call ended")
+  }
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+    toast.success(isMuted ? "Microphone enabled" : "Microphone muted")
+  }
+
+  const toggleVideo = () => {
+    setIsVideoEnabled(!isVideoEnabled)
+    toast.success(isVideoEnabled ? "Camera disabled" : "Camera enabled")
+  }
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp)
     const now = new Date()
@@ -395,6 +440,12 @@ export function MessagesView() {
         day: "numeric",
       })
     }
+  }
+
+  const formatCallDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   const filteredDirectConversations = directConversations.filter((conv) =>
@@ -701,15 +752,34 @@ export function MessagesView() {
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
-                {conversationType === "direct" && (
+                {conversationType === "direct" && !isCallActive && (
                   <>
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleStartCall("audio")}
+                      title="Start audio call"
+                    >
                       <Phone className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleStartCall("video")}
+                      title="Start video call"
+                    >
                       <Video className="h-4 w-4" />
                     </Button>
                   </>
+                )}
+                {isCallActive && (
+                  <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full">
+                    <div className="flex items-center gap-2">
+                      {callType === "video" && <Video className="h-4 w-4 text-primary" />}
+                      {callType === "audio" && <Phone className="h-4 w-4 text-primary" />}
+                      <span className="text-sm font-medium">{formatCallDuration(callDuration)}</span>
+                    </div>
+                  </div>
                 )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -813,6 +883,179 @@ export function MessagesView() {
           </div>
         )}
       </div>
+
+      {/* Active Call Interface */}
+      {isCallActive && (
+        <div className="absolute inset-0 z-50 bg-background flex items-center justify-center">
+          <div className="w-full h-full flex flex-col">
+            {/* Call Header */}
+            <div className="p-4 border-b flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {conversationType === "direct" && selectedConv && (
+                  <>
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback>
+                        {selectedConv.participant
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-medium">{selectedConv.participant}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {callType === "audio" ? "Audio Call" : "Video Call"} • {formatCallDuration(callDuration)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Video/Audio Display Area */}
+            <div className="flex-1 relative bg-muted/20">
+              {callType === "video" ? (
+                <div className="w-full h-full flex items-center justify-center">
+                  {/* Remote Video (Simulated) */}
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    {isVideoEnabled ? (
+                      <div className="text-center text-white">
+                        <Avatar className="h-32 w-32 mx-auto mb-4 border-4 border-white">
+                          <AvatarFallback className="text-4xl">
+                            {selectedConv?.participant
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <p className="text-lg font-medium">Video Call Active</p>
+                        <p className="text-sm opacity-90">Camera is {isVideoEnabled ? "on" : "off"}</p>
+                      </div>
+                    ) : (
+                      <div className="text-center text-white">
+                        <div className="h-32 w-32 mx-auto mb-4 bg-white/20 rounded-full flex items-center justify-center">
+                          <Video className="h-16 w-16" />
+                        </div>
+                        <p className="text-lg font-medium">Camera Off</p>
+                      </div>
+                    )}
+                  </div>
+                  {/* Local Video Preview (Simulated) */}
+                  {isVideoEnabled && (
+                    <div className="absolute bottom-4 right-4 w-48 h-36 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-lg border-2 border-white flex items-center justify-center">
+                      <div className="text-white text-center">
+                        <Avatar className="h-16 w-16 mx-auto mb-2 border-2 border-white">
+                          <AvatarFallback>You</AvatarFallback>
+                        </Avatar>
+                        <p className="text-xs">Your Camera</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-indigo-500 to-blue-600">
+                  <div className="text-center text-white">
+                    <Avatar className="h-32 w-32 mx-auto mb-4 border-4 border-white">
+                      <AvatarFallback className="text-4xl">
+                        {selectedConv?.participant
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-lg font-medium">{selectedConv?.participant}</p>
+                    <p className="text-sm opacity-90">Audio Call • {formatCallDuration(callDuration)}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Call Controls */}
+            <div className="p-6 border-t bg-background">
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant={isMuted ? "destructive" : "secondary"}
+                  size="lg"
+                  onClick={toggleMute}
+                  className="rounded-full h-14 w-14"
+                >
+                  {isMuted ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <line x1="2" y1="2" x2="22" y2="22" />
+                      <path d="M18.89 13.23A7.12 7.12 0 0 0 19 12v-2" />
+                      <path d="M5 10v2a7 7 0 0 0 12 5" />
+                      <path d="M15 9.34V5a3 3 0 0 0-5.68-1.33" />
+                      <path d="M9 9v3a3 3 0 0 0 5.12 2.12" />
+                      <line x1="12" y1="19" x2="12" y2="22" />
+                      <line x1="8" y1="22" x2="16" y2="22" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      <line x1="12" y1="19" x2="12" y2="22" />
+                      <line x1="8" y1="22" x2="16" y2="22" />
+                    </svg>
+                  )}
+                </Button>
+
+                {callType === "video" && (
+                  <Button
+                    variant={isVideoEnabled ? "secondary" : "destructive"}
+                    size="lg"
+                    onClick={toggleVideo}
+                    className="rounded-full h-14 w-14"
+                  >
+                    {isVideoEnabled ? (
+                      <Video className="h-6 w-6" />
+                    ) : (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m22 8-6 4 6 4V8Z" />
+                        <path d="M16 8h-6a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h6" />
+                        <line x1="2" y1="2" x2="22" y2="22" />
+                      </svg>
+                    )}
+                  </Button>
+                )}
+
+                <Button variant="destructive" size="lg" onClick={handleEndCall} className="rounded-full h-16 w-16">
+                  <Phone className="h-6 w-6 rotate-[135deg]" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Channel Dialog */}
       <Dialog open={isEditChannelOpen} onOpenChange={setIsEditChannelOpen}>
