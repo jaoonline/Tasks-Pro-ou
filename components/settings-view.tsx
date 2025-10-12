@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTheme } from "next-themes"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -48,6 +49,7 @@ import {
   Moon,
   Monitor,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface TeamMember {
   id: string
@@ -78,10 +80,11 @@ interface InvitationStatus {
 }
 
 export function SettingsView() {
+  const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(false)
   const [weeklyReports, setWeeklyReports] = useState(true)
-  const [theme, setTheme] = useState("system")
   const [language, setLanguage] = useState("en")
   const [fontSize, setFontSize] = useState("medium")
   const [compactMode, setCompactMode] = useState(false)
@@ -96,6 +99,7 @@ export function SettingsView() {
   const [qrCodeCopied, setQrCodeCopied] = useState(false)
   const [backupCodesCopied, setBackupCodesCopied] = useState(false)
   const [githubConnected, setGithubConnected] = useState(false)
+  const [selectedAccentColor, setSelectedAccentColor] = useState("#3b82f6")
   const [newTeamMember, setNewTeamMember] = useState({
     name: "",
     email: "",
@@ -210,6 +214,37 @@ export function SettingsView() {
     "7k8l-9m0n-1o2p",
     "3q4r-5s6t-7u8v",
   ]
+
+  const accentColors = [
+    { name: "Blue", value: "#3b82f6" },
+    { name: "Purple", value: "#8b5cf6" },
+    { name: "Green", value: "#10b981" },
+    { name: "Orange", value: "#f59e0b" },
+    { name: "Red", value: "#ef4444" },
+    { name: "Pink", value: "#ec4899" },
+    { name: "Cyan", value: "#06b6d4" },
+    { name: "Lime", value: "#84cc16" },
+    { name: "Amber", value: "#f97316" },
+    { name: "Indigo", value: "#6366f1" },
+    { name: "Teal", value: "#14b8a6" },
+    { name: "Rose", value: "#f43f5e" },
+  ]
+
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme)
+    toast({
+      title: "Theme Updated",
+      description: `Theme changed to ${newTheme}`,
+    })
+  }
+
+  const handleAccentColorChange = (color: string) => {
+    setSelectedAccentColor(color)
+    toast({
+      title: "Accent Color Updated",
+      description: "Your accent color has been changed",
+    })
+  }
 
   const sendInvitationEmail = async (member: TeamMember, customMessage?: string) => {
     setIsInviting(true)
@@ -349,12 +384,19 @@ export function SettingsView() {
   }
 
   const handleConnectGithub = () => {
-    // Simulate GitHub OAuth flow
     setGithubConnected(true)
+    toast({
+      title: "GitHub Connected",
+      description: "Successfully connected to GitHub",
+    })
   }
 
   const handleDisconnectGithub = () => {
     setGithubConnected(false)
+    toast({
+      title: "GitHub Disconnected",
+      description: "Successfully disconnected from GitHub",
+    })
   }
 
   const getRoleIcon = (role: string) => {
@@ -743,14 +785,15 @@ export function SettingsView() {
                 <CardContent className="space-y-6">
                   <div className="space-y-3">
                     <Label htmlFor="theme">Theme</Label>
+                    <p className="text-sm text-muted-foreground">Choose your preferred theme for the interface</p>
                     <div className="grid grid-cols-3 gap-3">
                       {["light", "dark", "system"].map((themeOption) => (
                         <div
                           key={themeOption}
-                          className={`relative cursor-pointer rounded-lg border-2 p-4 ${
-                            theme === themeOption ? "border-primary" : "border-muted"
+                          className={`relative cursor-pointer rounded-lg border-2 p-4 transition-all hover:border-primary/50 ${
+                            theme === themeOption ? "border-primary bg-primary/5" : "border-muted"
                           }`}
-                          onClick={() => setTheme(themeOption)}
+                          onClick={() => handleThemeChange(themeOption)}
                         >
                           <div className="flex flex-col items-center space-y-2">
                             {getThemeIcon(themeOption)}
@@ -758,7 +801,7 @@ export function SettingsView() {
                           </div>
                           {theme === themeOption && (
                             <div className="absolute top-2 right-2">
-                              <CheckCircle className="h-4 w-4 text-primary" />
+                              <CheckCircle className="h-5 w-5 text-primary" />
                             </div>
                           )}
                         </div>
@@ -808,32 +851,37 @@ export function SettingsView() {
 
                   <div className="space-y-3">
                     <Label>Color Accent</Label>
-                    <div className="grid grid-cols-6 gap-2">
-                      {[
-                        "#3b82f6",
-                        "#8b5cf6",
-                        "#10b981",
-                        "#f59e0b",
-                        "#ef4444",
-                        "#ec4899",
-                        "#06b6d4",
-                        "#84cc16",
-                        "#f97316",
-                        "#6366f1",
-                        "#14b8a6",
-                        "#f43f5e",
-                      ].map((color) => (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Choose your preferred accent color for the interface
+                    </p>
+                    <div className="grid grid-cols-6 gap-3">
+                      {accentColors.map((color) => (
                         <div
-                          key={color}
-                          className="w-8 h-8 rounded-full cursor-pointer border-2 border-muted hover:scale-110 transition-transform"
-                          style={{ backgroundColor: color }}
-                          onClick={() => console.log("Color selected:", color)}
-                        />
+                          key={color.value}
+                          className={`relative w-12 h-12 rounded-lg cursor-pointer border-2 transition-all hover:scale-110 ${
+                            selectedAccentColor === color.value ? "border-foreground scale-110" : "border-muted"
+                          }`}
+                          style={{ backgroundColor: color.value }}
+                          onClick={() => handleAccentColorChange(color.value)}
+                          title={color.name}
+                        >
+                          {selectedAccentColor === color.value && (
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <Check className="h-6 w-6 text-white drop-shadow-lg" />
+                            </div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>
 
-                  <Button>Save Appearance Settings</Button>
+                  <Button
+                    onClick={() =>
+                      toast({ title: "Settings Saved", description: "Your appearance preferences have been saved" })
+                    }
+                  >
+                    Save Appearance Settings
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -873,13 +921,15 @@ export function SettingsView() {
 
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gray-900 rounded-lg flex items-center justify-center">
-                        <Github className="h-5 w-5 text-white" />
+                      <div className="w-10 h-10 bg-gray-900 dark:bg-white rounded-lg flex items-center justify-center">
+                        <Github className="h-5 w-5 text-white dark:text-gray-900" />
                       </div>
                       <div>
                         <p className="font-medium">GitHub</p>
                         <p className="text-sm text-muted-foreground">Code repository and project management</p>
-                        {githubConnected && <p className="text-xs text-green-600">Connected as @johndoe</p>}
+                        {githubConnected && (
+                          <p className="text-xs text-green-600 dark:text-green-400">Connected as @johndoe</p>
+                        )}
                       </div>
                     </div>
                     {githubConnected ? (
@@ -1072,26 +1122,26 @@ export function SettingsView() {
                           <Alert
                             className={
                               invitationStatus.type === "error"
-                                ? "border-red-200 bg-red-50"
+                                ? "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950"
                                 : invitationStatus.type === "success"
-                                  ? "border-green-200 bg-green-50"
-                                  : "border-blue-200 bg-blue-50"
+                                  ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950"
+                                  : "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
                             }
                           >
                             {invitationStatus.type === "error" ? (
-                              <AlertCircle className="h-4 w-4 text-red-600" />
+                              <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                             ) : invitationStatus.type === "success" ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                             ) : (
-                              <Mail className="h-4 w-4 text-blue-600" />
+                              <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             )}
                             <AlertDescription
                               className={
                                 invitationStatus.type === "error"
-                                  ? "text-red-800"
+                                  ? "text-red-800 dark:text-red-200"
                                   : invitationStatus.type === "success"
-                                    ? "text-green-800"
-                                    : "text-blue-800"
+                                    ? "text-green-800 dark:text-green-200"
+                                    : "text-blue-800 dark:text-blue-200"
                               }
                             >
                               {invitationStatus.message}
@@ -1262,7 +1312,7 @@ export function SettingsView() {
                               {member.invitationSent && (
                                 <Badge
                                   variant="outline"
-                                  className="text-xs bg-green-50 text-green-700 border-green-200"
+                                  className="text-xs bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800"
                                 >
                                   <Mail className="h-3 w-3 mr-1" />
                                   Invited
@@ -1294,7 +1344,7 @@ export function SettingsView() {
                               size="sm"
                               onClick={() => handleResendInvitation(member)}
                               disabled={isInviting}
-                              className="hover:bg-blue-50 hover:text-blue-600 flex-1 sm:flex-none"
+                              className="hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400 flex-1 sm:flex-none"
                             >
                               {isInviting ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -1310,7 +1360,7 @@ export function SettingsView() {
                             variant="ghost"
                             size="sm"
                             onClick={() => openEditDialog(member)}
-                            className="hover:bg-blue-50 hover:text-blue-600"
+                            className="hover:bg-blue-50 dark:hover:bg-blue-950 hover:text-blue-600 dark:hover:text-blue-400"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -1318,7 +1368,7 @@ export function SettingsView() {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteTeamMember(member.id)}
-                            className="hover:bg-red-50 hover:text-red-600"
+                            className="hover:bg-red-50 dark:hover:bg-red-950 hover:text-red-600 dark:hover:text-red-400"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1329,7 +1379,6 @@ export function SettingsView() {
                 </CardContent>
               </Card>
 
-              {/* Edit Team Member Dialog */}
               <Dialog open={isEditTeamDialogOpen} onOpenChange={setIsEditTeamDialogOpen}>
                 <DialogContent className="sm:max-w-[425px] max-h-[90vh] w-[95vw] sm:w-full overflow-y-auto">
                   <DialogHeader>
