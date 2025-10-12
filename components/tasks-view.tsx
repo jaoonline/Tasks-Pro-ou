@@ -1,13 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
+import { useAtom } from "jotai"
+import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd-next"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -16,258 +18,229 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus, Calendar, User, X } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Plus, CalendarIcon, Filter, Search, CheckSquare, X, GripVertical, LayoutGrid, Kanban } from "lucide-react"
+import { format } from "date-fns"
+import { cn } from "@/lib/utils"
+import { tasksAtom, projectsAtom, teamMembersAtom, type Task, type SubTask } from "@/lib/atoms"
 import { TaskDetailDialog } from "./task-detail-dialog"
-import toast from "react-hot-toast"
+import { useToast } from "@/hooks/use-toast"
 
-interface Task {
-  id: string
-  title: string
-  description: string
-  status: "todo" | "in-progress" | "completed"
-  priority: "low" | "medium" | "high"
-  assignee: string
-  dueDate: string
-  projectId: string
-  projectName: string
-  createdAt: string
+const COLUMN_IDS = {
+  TODO: "todo",
+  IN_PROGRESS: "in-progress",
+  TEST_UNDER_REVIEW: "test-under-review",
+  DONE: "done",
+} as const
+
+const COLUMN_TITLES = {
+  [COLUMN_IDS.TODO]: "To Do",
+  [COLUMN_IDS.IN_PROGRESS]: "In Progress",
+  [COLUMN_IDS.TEST_UNDER_REVIEW]: "Test Under Review",
+  [COLUMN_IDS.DONE]: "Done",
 }
 
-interface TasksViewProps {
-  selectedProject?: string | null
+const COLUMN_COLORS = {
+  [COLUMN_IDS.TODO]: "bg-gray-100 dark:bg-gray-800",
+  [COLUMN_IDS.IN_PROGRESS]: "bg-blue-50 dark:bg-blue-950",
+  [COLUMN_IDS.TEST_UNDER_REVIEW]: "bg-yellow-50 dark:bg-yellow-950",
+  [COLUMN_IDS.DONE]: "bg-green-50 dark:bg-green-950",
 }
 
-export function TasksView({ selectedProject }: TasksViewProps) {
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [filteredTasks, setFilteredTasks] = useState<Task[]>([])
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+export function TasksView() {
+  const [tasks, setTasks] = useAtom(tasksAtom)
+  const [projects] = useAtom(projectsAtom)
+  const [teamMembers] = useAtom(teamMembersAtom)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [filterStatus, setFilterStatus] = useState<string>("all")
+  const [filterPriority, setFilterPriority] = useState<string>("all")
+  const [searchQuery, setSearchQuery] = useState("")
+  const { toast } = useToast()
+
+  // New task form state
   const [newTask, setNewTask] = useState({
     title: "",
     description: "",
-    status: "todo" as const,
-    priority: "medium" as const,
+    status: "todo" as Task["status"],
+    priority: "medium" as Task["priority"],
     assignee: "",
-    dueDate: "",
+    dueDate: new Date(),
     projectId: "",
-    projectName: "",
+    tags: "",
   })
 
-  // Demo team members
-  const teamMembers = [
-    { id: "1", name: "John Doe", email: "john.doe@company.com" },
-    { id: "2", name: "Jane Smith", email: "jane.smith@company.com" },
-    { id: "3", name: "Mike Johnson", email: "mike.johnson@company.com" },
-    { id: "4", name: "Sarah Wilson", email: "sarah.wilson@company.com" },
-    { id: "5", name: "Alex Chen", email: "alex.chen@company.com" },
-  ]
+  // Subtasks state
+  const [subTasks, setSubTasks] = useState<SubTask[]>([])
+  const [newSubTaskTitle, setNewSubTaskTitle] = useState("")
 
-  // Demo projects
-  const projects = [
-    { id: "1", name: "Website Redesign" },
-    { id: "2", name: "Mobile App Development" },
-    { id: "3", name: "Marketing Campaign" },
-    { id: "4", name: "API Integration" },
-    { id: "5", name: "Security Audit" },
-  ]
-
-  useEffect(() => {
-    // Load demo tasks with proper project relationships
-    const demoTasks: Task[] = [
-      {
-        id: "1",
-        title: "Design Homepage Layout",
-        description: "Create wireframes and mockups for the new homepage design",
-        status: "in-progress",
-        priority: "high",
-        assignee: "Jane Smith",
-        dueDate: "2024-01-15",
-        projectId: "1",
-        projectName: "Website Redesign",
-        createdAt: "2024-01-01",
-      },
-      {
-        id: "2",
-        title: "Implement User Authentication",
-        description: "Set up login and registration functionality",
-        status: "todo",
-        priority: "high",
-        assignee: "John Doe",
-        dueDate: "2024-01-20",
-        projectId: "2",
-        projectName: "Mobile App Development",
-        createdAt: "2024-01-02",
-      },
-      {
-        id: "3",
-        title: "Create Social Media Content",
-        description: "Develop content calendar and create posts for Q1",
-        status: "completed",
-        priority: "medium",
-        assignee: "Mike Johnson",
-        dueDate: "2024-01-10",
-        projectId: "3",
-        projectName: "Marketing Campaign",
-        createdAt: "2024-01-03",
-      },
-      {
-        id: "4",
-        title: "Database Schema Design",
-        description: "Design and implement the database structure",
-        status: "in-progress",
-        priority: "high",
-        assignee: "Sarah Wilson",
-        dueDate: "2024-01-25",
-        projectId: "4",
-        projectName: "API Integration",
-        createdAt: "2024-01-04",
-      },
-      {
-        id: "5",
-        title: "Security Vulnerability Assessment",
-        description: "Conduct comprehensive security audit",
-        status: "todo",
-        priority: "high",
-        assignee: "Alex Chen",
-        dueDate: "2024-02-01",
-        projectId: "5",
-        projectName: "Security Audit",
-        createdAt: "2024-01-05",
-      },
-      {
-        id: "6",
-        title: "Mobile UI Components",
-        description: "Build reusable UI components for mobile app",
-        status: "todo",
-        priority: "medium",
-        assignee: "Jane Smith",
-        dueDate: "2024-01-30",
-        projectId: "2",
-        projectName: "Mobile App Development",
-        createdAt: "2024-01-06",
-      },
-      {
-        id: "7",
-        title: "Content Management System",
-        description: "Implement CMS for website content updates",
-        status: "todo",
-        priority: "medium",
-        assignee: "John Doe",
-        dueDate: "2024-02-05",
-        projectId: "1",
-        projectName: "Website Redesign",
-        createdAt: "2024-01-07",
-      },
-    ]
-    setTasks(demoTasks)
-  }, [])
-
-  useEffect(() => {
-    // Filter tasks based on selected project
-    if (selectedProject) {
-      const filtered = tasks.filter((task) => task.projectId === selectedProject)
-      setFilteredTasks(filtered)
-    } else {
-      setFilteredTasks(tasks)
-    }
-  }, [tasks, selectedProject])
-
-  const handleCreateTask = async () => {
-    if (!newTask.title.trim()) {
-      toast.error("Task title is required")
-      return
-    }
-
-    if (!newTask.description.trim()) {
-      toast.error("Task description is required")
-      return
-    }
-
-    if (!newTask.dueDate) {
-      toast.error("Due date is required")
-      return
-    }
-
-    if (!newTask.assignee) {
-      toast.error("Please assign the task to a team member")
-      return
-    }
-
-    if (!newTask.projectId) {
-      toast.error("Please select a project")
-      return
-    }
-
-    setIsLoading(true)
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      const selectedProjectData = projects.find((p) => p.id === newTask.projectId)
-
-      const task: Task = {
-        id: Date.now().toString(),
-        title: newTask.title,
-        description: newTask.description,
-        status: newTask.status,
-        priority: newTask.priority,
-        assignee: newTask.assignee,
-        dueDate: newTask.dueDate,
-        projectId: newTask.projectId,
-        projectName: selectedProjectData?.name || "",
-        createdAt: new Date().toISOString(),
-      }
-
-      setTasks([...tasks, task])
-      setNewTask({
-        title: "",
-        description: "",
-        status: "todo",
-        priority: "medium",
-        assignee: "",
-        dueDate: "",
-        projectId: "",
-        projectName: "",
-      })
-      setIsCreateDialogOpen(false)
-      toast.success("Task created successfully!")
-    } catch (error) {
-      toast.error("Failed to create task. Please try again.")
-    } finally {
-      setIsLoading(false)
-    }
+  const handleTaskClick = (task: Task) => {
+    setSelectedTask(task)
+    setIsDetailDialogOpen(true)
   }
 
-  const getStatusColor = (status: string) => {
+  const handleCreateTask = () => {
+    if (!newTask.title || !newTask.projectId || !newTask.assignee) {
+      toast({
+        title: "Missing Fields",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const project = projects.find((p) => p.id === newTask.projectId)
+    const task: Task = {
+      id: `task-${Date.now()}`,
+      title: newTask.title,
+      description: newTask.description,
+      status: newTask.status,
+      priority: newTask.priority,
+      assignee: newTask.assignee,
+      dueDate: format(newTask.dueDate, "yyyy-MM-dd"),
+      projectId: newTask.projectId,
+      projectName: project?.name || "",
+      createdAt: new Date().toISOString(),
+      tags: newTask.tags ? newTask.tags.split(",").map((tag) => tag.trim()) : [],
+      progress: 0,
+      timeSpent: "0h",
+      estimatedTime: "0h",
+      comments: [],
+      attachments: [],
+      subTasks: subTasks,
+    }
+
+    setTasks([...tasks, task])
+    setIsCreateDialogOpen(false)
+    setNewTask({
+      title: "",
+      description: "",
+      status: "todo",
+      priority: "medium",
+      assignee: "",
+      dueDate: new Date(),
+      projectId: "",
+      tags: "",
+    })
+    setSubTasks([])
+    setNewSubTaskTitle("")
+
+    toast({
+      title: "Task Created",
+      description: "Your task has been created successfully.",
+    })
+  }
+
+  const handleAddSubTask = () => {
+    if (!newSubTaskTitle.trim()) return
+
+    const newSubTask: SubTask = {
+      id: `st-${Date.now()}`,
+      title: newSubTaskTitle,
+      completed: false,
+    }
+
+    setSubTasks([...subTasks, newSubTask])
+    setNewSubTaskTitle("")
+
+    toast({
+      title: "Subtask Added",
+      description: "Subtask has been added successfully.",
+    })
+  }
+
+  const handleRemoveSubTask = (id: string) => {
+    setSubTasks(subTasks.filter((st) => st.id !== id))
+    toast({
+      title: "Subtask Removed",
+      description: "Subtask has been removed.",
+    })
+  }
+
+  const handleToggleSubTask = (id: string) => {
+    setSubTasks(subTasks.map((st) => (st.id === id ? { ...st, completed: !st.completed } : st)))
+  }
+
+  const handleDragEnd = (result: DropResult) => {
+    const { source, destination, draggableId } = result
+
+    if (!destination) return
+
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return
+    }
+
+    const taskToMove = tasks.find((task) => task.id === draggableId)
+    if (!taskToMove) return
+
+    const updatedTask = {
+      ...taskToMove,
+      status: destination.droppableId as Task["status"],
+      updatedAt: new Date().toISOString(),
+    }
+
+    const updatedTasks = tasks.map((task) => (task.id === draggableId ? updatedTask : task))
+
+    setTasks(updatedTasks)
+
+    toast({
+      title: "Task Moved",
+      description: `Task moved to ${COLUMN_TITLES[destination.droppableId as keyof typeof COLUMN_TITLES]}`,
+    })
+  }
+
+  const filteredTasks = tasks.filter((task) => {
+    const matchesStatus = filterStatus === "all" || task.status === filterStatus
+    const matchesPriority = filterPriority === "all" || task.priority === filterPriority
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchesStatus && matchesPriority && matchesSearch
+  })
+
+  const groupedTasksForBoard = {
+    [COLUMN_IDS.TODO]: filteredTasks.filter((task) => task.status === COLUMN_IDS.TODO),
+    [COLUMN_IDS.IN_PROGRESS]: filteredTasks.filter((task) => task.status === COLUMN_IDS.IN_PROGRESS),
+    [COLUMN_IDS.TEST_UNDER_REVIEW]: filteredTasks.filter((task) => task.status === COLUMN_IDS.TEST_UNDER_REVIEW),
+    [COLUMN_IDS.DONE]: filteredTasks.filter((task) => task.status === COLUMN_IDS.DONE),
+  }
+
+  const getStatusColor = (status: Task["status"]) => {
     switch (status) {
-      case "completed":
-        return "bg-green-500"
-      case "in-progress":
-        return "bg-blue-500"
       case "todo":
         return "bg-gray-500"
+      case "in-progress":
+        return "bg-blue-500"
+      case "test-under-review":
+        return "bg-yellow-500"
+      case "done":
+        return "bg-green-500"
       default:
         return "bg-gray-500"
     }
   }
 
-  const getPriorityColor = (priority: string) => {
+  const getPriorityColor = (priority: Task["priority"]) => {
     switch (priority) {
-      case "high":
-        return "destructive"
-      case "medium":
-        return "default"
       case "low":
-        return "secondary"
+        return "border-l-green-500"
+      case "medium":
+        return "border-l-yellow-500"
+      case "high":
+        return "border-l-red-500"
       default:
-        return "outline"
+        return "border-l-gray-500"
     }
   }
 
   const getInitials = (name: string) => {
+    if (!name) return "?"
     return name
       .split(" ")
       .map((n) => n[0])
@@ -275,139 +248,124 @@ export function TasksView({ selectedProject }: TasksViewProps) {
       .toUpperCase()
   }
 
-  const selectedProjectName = selectedProject ? projects.find((p) => p.id === selectedProject)?.name : null
+  const getSubTaskProgress = (task: Task) => {
+    if (!task.subTasks || task.subTasks.length === 0) return null
+    const completed = task.subTasks.filter((st) => st.completed).length
+    const total = task.subTasks.length
+    const percentage = (completed / total) * 100
+    return { completed, total, percentage }
+  }
 
   const stats = {
     total: filteredTasks.length,
     todo: filteredTasks.filter((t) => t.status === "todo").length,
     inProgress: filteredTasks.filter((t) => t.status === "in-progress").length,
-    completed: filteredTasks.filter((t) => t.status === "completed").length,
+    testUnderReview: filteredTasks.filter((t) => t.status === "test-under-review").length,
+    done: filteredTasks.filter((t) => t.status === "done").length,
   }
 
   return (
-    <div className="space-y-6 scrollbar-hide">
-      {/* Project Context Header */}
-      {selectedProject && (
-        <div className="bg-muted/50 rounded-lg p-4 border">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">Project: {selectedProjectName}</h3>
-              <p className="text-sm text-muted-foreground">Showing {filteredTasks.length} tasks for this project</p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
-              <X className="h-4 w-4 mr-2" />
-              View All Tasks
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">Tasks</h2>
+          <p className="text-muted-foreground">Manage and track all your tasks</p>
         </div>
-      )}
-
-      {/* Task Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-            <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">To Do</CardTitle>
-            <div className="h-2 w-2 bg-gray-500 rounded-full"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{stats.todo}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">In Progress</CardTitle>
-            <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats.inProgress}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.completed}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Tasks Section */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Tasks</h2>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <Plus className="mr-2 h-4 w-4" />
               New Task
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[80vh] scrollbar-hide overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Task</DialogTitle>
-              <DialogDescription>Add a new task to your project.</DialogDescription>
+              <DialogDescription>Add a new task to your project</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 scrollbar-hide">
-              <div>
-                <Label htmlFor="title">Task Title</Label>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
                   placeholder="Enter task title"
-                  disabled={isLoading}
                 />
               </div>
-              <div>
+              <div className="grid gap-2">
                 <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
                   placeholder="Enter task description"
-                  disabled={isLoading}
-                  className="scrollbar-hide"
+                  rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="project">Project *</Label>
+                  <Select
+                    value={newTask.projectId}
+                    onValueChange={(value) => setNewTask({ ...newTask, projectId: value })}
+                  >
+                    <SelectTrigger id="project">
+                      <SelectValue placeholder="Select project" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="assignee">Assignee *</Label>
+                  <Select
+                    value={newTask.assignee}
+                    onValueChange={(value) => setNewTask({ ...newTask, assignee: value })}
+                  >
+                    <SelectTrigger id="assignee">
+                      <SelectValue placeholder="Select assignee" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.name}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="grid gap-2">
                   <Label htmlFor="status">Status</Label>
                   <Select
                     value={newTask.status}
-                    onValueChange={(value: any) => setNewTask({ ...newTask, status: value })}
-                    disabled={isLoading}
+                    onValueChange={(value: Task["status"]) => setNewTask({ ...newTask, status: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="status">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="todo">To Do</SelectItem>
                       <SelectItem value="in-progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="test-under-review">Test Under Review</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
+                <div className="grid gap-2">
                   <Label htmlFor="priority">Priority</Label>
                   <Select
                     value={newTask.priority}
-                    onValueChange={(value: any) => setNewTask({ ...newTask, priority: value })}
-                    disabled={isLoading}
+                    onValueChange={(value: Task["priority"]) => setNewTask({ ...newTask, priority: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="priority">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -417,186 +375,435 @@ export function TasksView({ selectedProject }: TasksViewProps) {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="assignee">Assign To</Label>
-                  <Select
-                    value={newTask.assignee}
-                    onValueChange={(value) => setNewTask({ ...newTask, assignee: value })}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select team member" />
-                    </SelectTrigger>
-                    <SelectContent className="scrollbar-hide">
-                      <SelectItem value="Unassigned">Unassigned</SelectItem>
-                      {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.name}>
-                          <div className="flex items-center gap-2">
-                            <Avatar className="w-6 h-6">
-                              <AvatarFallback className="text-xs">{getInitials(member.name)}</AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <div className="font-medium">{member.name}</div>
-                              <div className="text-xs text-muted-foreground">{member.email}</div>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="project">Project</Label>
-                  <Select
-                    value={newTask.projectId}
-                    onValueChange={(value) => {
-                      const project = projects.find((p) => p.id === value)
-                      setNewTask({
-                        ...newTask,
-                        projectId: value,
-                        projectName: project?.name || "",
-                      })
-                    }}
-                    disabled={isLoading}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent className="scrollbar-hide">
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid gap-2">
+                  <Label>Due Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "justify-start text-left font-normal",
+                          !newTask.dueDate && "text-muted-foreground",
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newTask.dueDate ? format(newTask.dueDate, "PPP") : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={newTask.dueDate}
+                        onSelect={(date) => date && setNewTask({ ...newTask, dueDate: date })}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
-              <div>
-                <Label htmlFor="dueDate">Due Date</Label>
+              <div className="grid gap-2">
+                <Label htmlFor="tags">Tags (comma-separated)</Label>
                 <Input
-                  id="dueDate"
-                  type="date"
-                  value={newTask.dueDate}
-                  onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                  disabled={isLoading}
+                  id="tags"
+                  value={newTask.tags}
+                  onChange={(e) => setNewTask({ ...newTask, tags: e.target.value })}
+                  placeholder="e.g., design, frontend, urgent"
                 />
               </div>
-              <Button onClick={handleCreateTask} className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create Task"}
+
+              {/* Subtasks Section */}
+              <div className="grid gap-2 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base">Subtasks</Label>
+                  {subTasks.length > 0 && <Badge variant="secondary">{subTasks.length}</Badge>}
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    value={newSubTaskTitle}
+                    onChange={(e) => setNewSubTaskTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        handleAddSubTask()
+                      }
+                    }}
+                    placeholder="Add a subtask..."
+                    className="flex-1"
+                  />
+                  <Button type="button" size="sm" onClick={handleAddSubTask}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {subTasks.length > 0 && (
+                  <ScrollArea className="h-[200px] rounded-md border p-3">
+                    <div className="space-y-2">
+                      {subTasks.map((subTask) => (
+                        <div
+                          key={subTask.id}
+                          className="flex items-center justify-between gap-2 rounded-md p-2 hover:bg-muted"
+                        >
+                          <div className="flex items-center gap-2 flex-1">
+                            <Checkbox
+                              checked={subTask.completed}
+                              onCheckedChange={() => handleToggleSubTask(subTask.id)}
+                            />
+                            <span className={cn("text-sm", subTask.completed && "line-through text-muted-foreground")}>
+                              {subTask.title}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveSubTask(subTask.id)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                )}
+                {subTasks.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No subtasks added yet. Add subtasks to break down this task into smaller steps.
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
               </Button>
+              <Button onClick={handleCreateTask}>Create Task</Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Tasks Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hover-scrollbar overflow-y-auto max-h-[70vh]">
-        {filteredTasks.map((task) => (
-          <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
-        ))}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">To Do</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.todo}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">In Progress</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.inProgress}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Under Review</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.testUnderReview}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Done</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.done}</div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Task Detail Dialog */}
-      {selectedTask && (
-        <TaskDetailDialog
-          task={selectedTask}
-          isOpen={!!selectedTask}
-          onClose={() => setSelectedTask(null)}
-          onUpdate={(updatedTask) => {
-            setTasks(tasks.map((t) => (t.id === updatedTask.id ? updatedTask : t)))
-            setSelectedTask(null)
-          }}
-        />
-      )}
-    </div>
-  )
-}
-
-function TaskCard({ task, onClick }: { task: Task; onClick: () => void }) {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-500"
-      case "in-progress":
-        return "bg-blue-500"
-      case "todo":
-        return "bg-gray-500"
-      default:
-        return "bg-gray-500"
-    }
-  }
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high":
-        return "destructive"
-      case "medium":
-        return "default"
-      case "low":
-        return "secondary"
-      default:
-        return "outline"
-    }
-  }
-
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-  }
-
-  return (
-    <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onClick}>
-      <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <CardTitle className="text-lg mb-2">{task.title}</CardTitle>
-            <div className="flex items-center space-x-2 mb-3">
-              <div className={`w-3 h-3 rounded-full ${getStatusColor(task.status)}`}></div>
-              <Badge variant="outline" className="text-xs">
-                {task.status.replace("-", " ")}
-              </Badge>
-              <Badge variant={getPriorityColor(task.priority) as any} className="text-xs">
-                {task.priority}
-              </Badge>
+      {/* Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="relative col-span-2">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search tasks..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
             </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger>
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="todo">To Do</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="test-under-review">Test Under Review</SelectItem>
+                <SelectItem value="done">Done</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterPriority} onValueChange={setFilterPriority}>
+              <SelectTrigger>
+                <Filter className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Filter by priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Priority</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm mb-4">{task.description}</p>
+        </CardContent>
+      </Card>
 
-        {/* Project Badge */}
-        <div className="mb-4">
-          <Badge variant="secondary" className="text-xs">
-            {task.projectName}
-          </Badge>
-        </div>
+      {/* Tabs for List and Board Views */}
+      <Tabs defaultValue="list" className="space-y-4">
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+          <TabsTrigger value="list" className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            Task List
+          </TabsTrigger>
+          <TabsTrigger value="board" className="flex items-center gap-2">
+            <Kanban className="h-4 w-4" />
+            Tasks Board
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Task Details */}
-        <div className="space-y-2">
-          {task.assignee && (
-            <div className="flex items-center space-x-2 text-sm">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <Avatar className="w-6 h-6">
-                <AvatarFallback className="text-xs">{getInitials(task.assignee)}</AvatarFallback>
-              </Avatar>
-              <span>{task.assignee}</span>
+        {/* Task List View */}
+        <TabsContent value="list" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTasks.map((task) => {
+              const subTaskProgress = getSubTaskProgress(task)
+              return (
+                <Card
+                  key={task.id}
+                  className={cn(
+                    "cursor-pointer border-l-4 transition-all hover:shadow-md",
+                    getPriorityColor(task.priority),
+                  )}
+                  onClick={() => handleTaskClick(task)}
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-base line-clamp-2">{task.title}</CardTitle>
+                      <Badge className={cn("shrink-0 text-white", getStatusColor(task.status))}>
+                        {task.status === "in-progress"
+                          ? "In Progress"
+                          : task.status === "todo"
+                            ? "To Do"
+                            : task.status === "test-under-review"
+                              ? "Under Review"
+                              : "Done"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground line-clamp-2">{task.description}</p>
+
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="text-xs">
+                        {task.projectName}
+                      </Badge>
+                    </div>
+
+                    {subTaskProgress && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <CheckSquare className="h-3 w-3" />
+                            <span>
+                              {subTaskProgress.completed}/{subTaskProgress.total} subtasks
+                            </span>
+                          </div>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className="h-full bg-blue-500 transition-all"
+                            style={{ width: `${subTaskProgress.percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-sm pt-2">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="w-6 h-6">
+                          <AvatarFallback className="text-xs">{getInitials(task.assignee)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-muted-foreground">{task.assignee}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                        <CalendarIcon className="h-3 w-3" />
+                        <span>{format(new Date(task.dueDate), "MMM d")}</span>
+                      </div>
+                    </div>
+
+                    {task.tags && task.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {task.tags.slice(0, 3).map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                        {task.tags.length > 3 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{task.tags.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+          {filteredTasks.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <p className="text-lg font-medium">No tasks found</p>
+              <p className="text-sm text-muted-foreground">Try adjusting your filters or create a new task</p>
             </div>
           )}
-          {task.dueDate && (
-            <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-              <Calendar className="h-4 w-4" />
-              <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+        </TabsContent>
+
+        {/* Tasks Board View with Drag and Drop */}
+        <TabsContent value="board">
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {Object.entries(COLUMN_IDS).map(([key, columnId]) => (
+                <Card key={columnId} className={cn("flex flex-col", COLUMN_COLORS[columnId])}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold">{COLUMN_TITLES[columnId]}</CardTitle>
+                      <Badge variant="secondary">{groupedTasksForBoard[columnId].length}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="flex-1 p-3">
+                    <Droppable droppableId={columnId}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={cn(
+                            "space-y-2 min-h-[500px] rounded-md p-2 transition-colors",
+                            snapshot.isDraggingOver && "bg-muted/50",
+                          )}
+                        >
+                          {groupedTasksForBoard[columnId].map((task, index) => {
+                            const subTaskProgress = getSubTaskProgress(task)
+                            return (
+                              <Draggable key={task.id} draggableId={task.id} index={index}>
+                                {(provided, snapshot) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    className={cn(
+                                      "cursor-pointer border-l-4 transition-all hover:shadow-md bg-white",
+                                      getPriorityColor(task.priority),
+                                      snapshot.isDragging && "shadow-lg rotate-2",
+                                    )}
+                                    onClick={() => handleTaskClick(task)}
+                                  >
+                                    <CardContent className="p-3 space-y-2">
+                                      <div className="flex items-start gap-2">
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="mt-1 cursor-grab active:cursor-grabbing"
+                                        >
+                                          <GripVertical className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <div className="flex-1 space-y-1">
+                                          <h4 className="text-sm font-semibold line-clamp-2">{task.title}</h4>
+                                          <p className="text-xs text-muted-foreground line-clamp-2">
+                                            {task.description}
+                                          </p>
+                                        </div>
+                                      </div>
+
+                                      {subTaskProgress && (
+                                        <div className="space-y-1">
+                                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <div className="flex items-center gap-1">
+                                              <CheckSquare className="h-3 w-3" />
+                                              <span>
+                                                {subTaskProgress.completed}/{subTaskProgress.total}
+                                              </span>
+                                            </div>
+                                          </div>
+                                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                                            <div
+                                              className="h-full bg-blue-500 transition-all"
+                                              style={{ width: `${subTaskProgress.percentage}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      <div className="flex items-center justify-between text-xs">
+                                        <div className="flex items-center gap-1">
+                                          <Avatar className="h-5 w-5">
+                                            <AvatarFallback className="text-[10px]">
+                                              {getInitials(task.assignee)}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-muted-foreground truncate max-w-[80px]">
+                                            {task.assignee}
+                                          </span>
+                                        </div>
+                                        <Badge variant="outline" className="text-[10px]">
+                                          {task.priority}
+                                        </Badge>
+                                      </div>
+
+                                      {task.tags && task.tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1">
+                                          {task.tags.slice(0, 2).map((tag, index) => (
+                                            <Badge key={index} variant="secondary" className="text-[10px]">
+                                              {tag}
+                                            </Badge>
+                                          ))}
+                                          {task.tags.length > 2 && (
+                                            <Badge variant="secondary" className="text-[10px]">
+                                              +{task.tags.length - 2}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                      )}
+                                    </CardContent>
+                                  </Card>
+                                )}
+                              </Draggable>
+                            )
+                          })}
+                          {provided.placeholder}
+                          {groupedTasksForBoard[columnId].length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+                              <p className="text-sm">No tasks</p>
+                              <p className="text-xs">Drag tasks here</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </DragDropContext>
+        </TabsContent>
+      </Tabs>
+
+      <TaskDetailDialog task={selectedTask} open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen} />
+    </div>
   )
 }
