@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
+    "dev": "next dev -p 3030",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start -p 3030"
   },
   "dependencies": {
     "@ai-sdk/openai": "^1.0.9",
@@ -40,8 +40,11 @@
     "@radix-ui/react-toggle": "latest",
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
+    "@radix-ui/themes": "^3.2.1",
     "@types/react-beautiful-dnd": "^13.1.8",
     "ai": "^4.0.29",
+    "autoprefixer": "^10.4.21",
+    "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "latest",
@@ -51,6 +54,7 @@
     "jotai": "latest",
     "lucide-react": "^0.454.0",
     "next": "15.2.4",
+    "next-auth": "^5.0.0-beta.29",
     "next-themes": "latest",
     "react": "^19",
     "react-beautiful-dnd-next": "latest",
@@ -60,20 +64,28 @@
     "react-hot-toast": "latest",
     "react-resizable-panels": "latest",
     "recharts": "latest",
+    "simple-peer": "^9.11.1",
+    "socket.io-client": "^4.8.1",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
-    "zod": "^3.24.1"
+    "zod": "^3.25.76"
+  },
+  "overrides": {
+    "react-beautiful-dnd-next": {
+      "react": "^19.2.0"
+    }
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/simple-peer": "^9.11.8",
     "eslint": "^8",
     "eslint-config-next": "15.1.3",
-    "postcss": "^8.5",
-    "tailwindcss": "^3.4.17",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
     "typescript": "^5"
   }
 }

@@ -15,6 +15,9 @@ import { Eye, EyeOff, Github } from "lucide-react"
 import { loginSchema, registerSchema, type LoginFormData, type RegisterFormData } from "@/lib/validations/auth"
 import { userAtom, authLoadingAtom } from "@/lib/atoms"
 import { useToast } from "@/hooks/use-toast"
+import { signIn, SignInOptions } from "next-auth/react"
+import { log } from 'console';
+import { tr } from "date-fns/locale"
 
 // Google Icon Component
 function GoogleIcon() {
@@ -40,8 +43,15 @@ function GoogleIcon() {
   )
 }
 
+interface SignInResponse {
+  error?: string;
+  status?: number;
+  ok?: boolean;
+  url?: string | null;
+}
+
 export default function LoginPage() {
-  const router = useRouter()
+    const router = useRouter()
   const { toast } = useToast()
   const [user, setUser] = useAtom(userAtom)
   const [authLoading, setAuthLoading] = useAtom(authLoadingAtom)
@@ -74,23 +84,38 @@ export default function LoginPage() {
     setAuthLoading(true)
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock successful login
-      const mockUser = {
-        id: "1",
-        name: "John Doe",
+      const UserDatas = {
         email: data.email,
-        role: "Admin",
+        password: data.password,
+        redirect: false as const,
       }
+      console.log("UserDatas:", UserDatas);
 
-      setUser(mockUser)
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      })
-      router.push("/dashboard")
+      const result = await signIn("credentials", UserDatas);
+      console.log("SignIn Result:", result);
+       if (result?.error) {
+          // Handle login error (e.g., display error message to user)
+          console.error("Login failed:", result.error);
+          toast({
+            title: "Login failed",
+            description: result.error,
+            variant: "destructive",
+          })
+          // You might set a state variable to show an error message
+        } else {
+          toast({
+            title: "Welcome back!",
+            description: "You have successfully signed in.",
+          })
+          console.log("Login successful:", result);
+          // Login successful, now manually redirect
+          console.log("Login successful, redirecting to dashboard...");
+          router.push("/dashboard"); // <-- Explicitly push to the dashboard
+        
+        } 
     } catch (error) {
+      console.log(error);
+      
       toast({
         title: "Error",
         description: "Invalid email or password. Please try again.",
@@ -105,22 +130,39 @@ export default function LoginPage() {
     setAuthLoading(true)
     try {
       // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
+      // await new Promise((resolve) => setTimeout(resolve, 1500))
       // Mock successful registration
-      const mockUser = {
-        id: "1",
-        name: data.name,
-        email: data.email,
-        role: "User",
-      }
+        const response = await fetch('/api/auth/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                fullname: data.name,
+                email: data.email,
+                password: data.password,
+              }),
+            }); 
+            const user = await response.json();
+            if (response.ok && user.statusCode === '00') {
+              // Return the user object if authentication was successful
+              console.log("Authenticated user:", user);
+              
+              toast({
+                title: user.status,
+                description: user.message || "Registration failed. Please try again.",
+              })
+              return user;
+            } else {
+              // Return null if user data could not be retrieved 
+              toast({
+                title: user.status,
+                description: user.message || "Registration failed. Please try again.",
+              })
+              console.error('Authentication failed:', user?.message);
+              return null;
+            }
 
-      setUser(mockUser)
-      toast({
-        title: "Account created!",
-        description: "Your account has been created successfully.",
-      })
-      router.push("/dashboard")
     } catch (error) {
       toast({
         title: "Error",
@@ -166,22 +208,29 @@ export default function LoginPage() {
     setGithubLoading(true)
     try {
       // Simulate OAuth flow
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const resp = await signIn("github", {
+        callbackUrl: "/dashboard",
+      });
+      console.log("GitHub SignIn Response:", resp);
+      
+      // await new Promise((resolve) => setTimeout(resolve, 2000))
 
-      const mockUser = {
-        id: "github-1",
-        name: "GitHub User",
-        email: "user@github.com",
-        role: "User",
-      }
-
-      setUser(mockUser)
-      toast({
-        title: "Welcome!",
-        description: "Successfully signed in with GitHub.",
-      })
-      router.push("/dashboard")
+      // const mockUser = {
+      //   id: "github-1",
+      //   name: "GitHub User",
+      //   email: "user@github.com",
+      //   role: "User",
+      // }
+      
+      // setUser(mockUser)
+      // toast({
+      //   title: "Welcome!",
+      //   description: "Successfully signed in with GitHub.",
+      // })
+      // router.push("/dashboard")
     } catch (error) {
+      console.log(error);
+      
       toast({
         title: "Error",
         description: "GitHub authentication failed. Please try again.",
@@ -191,6 +240,7 @@ export default function LoginPage() {
       setGithubLoading(false)
     }
   }
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">

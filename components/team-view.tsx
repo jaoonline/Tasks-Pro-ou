@@ -1,12 +1,16 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+
+import { useAtomValue } from "jotai";
+import { teamIdAtom } from "@/atoms/team";
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import TeamMembersTable from "@/components/team-lists"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -35,7 +39,7 @@ interface TeamMember {
   email: string
   role: "admin" | "manager" | "member"
   department: string
-  joinDate: string
+  createdAt: string
   status: "active" | "inactive"
   avatar?: string
   phone?: string
@@ -48,10 +52,38 @@ interface TeamViewProps {
   isAdmin: boolean
 }
 
+export async function fetchTeam(teamId: string) {
+  const res = await fetch("/api/team", {
+    method: "GET",
+    headers: {
+      "x-team-id": teamId, // 👈 pass it here
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch team");
+  }
+
+  return res.json();
+}
+
+export default function TeamLoader() {
+  const teamId = 'adeef'; //useAtomValue(teamIdAtom);
+  console.log('<<<<<<<<<1 teamId>>>>>>>>>');
+  console.log(teamId);
+  console.log('<<<<<<<<<2 teamId>>>>>>>>>');
+  if (!teamId) return null;
+
+  fetchTeam(teamId);
+
+  return null;
+}
+
 export function TeamView({ isAdmin }: TeamViewProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isActive, setIsActive] = useState(true)
   const [newMember, setNewMember] = useState({
     name: "",
     email: "",
@@ -61,73 +93,38 @@ export function TeamView({ isAdmin }: TeamViewProps) {
 
   useEffect(() => {
     // Load demo team members
-    const demoMembers: TeamMember[] = [
-      {
-        id: "1",
-        name: "John Doe",
-        email: "john.doe@company.com",
-        role: "admin",
-        department: "Engineering",
-        joinDate: "2023-01-15",
-        status: "active",
-        phone: "+1 (555) 123-4567",
-        location: "San Francisco, CA",
-        tasksCompleted: 45,
-        tasksInProgress: 3,
-      },
-      {
-        id: "2",
-        name: "Jane Smith",
-        email: "jane.smith@company.com",
-        role: "manager",
-        department: "Design",
-        joinDate: "2023-03-20",
-        status: "active",
-        phone: "+1 (555) 234-5678",
-        location: "New York, NY",
-        tasksCompleted: 32,
-        tasksInProgress: 5,
-      },
-      {
-        id: "3",
-        name: "Mike Johnson",
-        email: "mike.johnson@company.com",
-        role: "member",
-        department: "Marketing",
-        joinDate: "2023-06-10",
-        status: "active",
-        phone: "+1 (555) 345-6789",
-        location: "Austin, TX",
-        tasksCompleted: 28,
-        tasksInProgress: 2,
-      },
-      {
-        id: "4",
-        name: "Sarah Wilson",
-        email: "sarah.wilson@company.com",
-        role: "member",
-        department: "Engineering",
-        joinDate: "2023-08-05",
-        status: "active",
-        phone: "+1 (555) 456-7890",
-        location: "Seattle, WA",
-        tasksCompleted: 19,
-        tasksInProgress: 4,
-      },
-      {
-        id: "5",
-        name: "Alex Chen",
-        email: "alex.chen@company.com",
-        role: "member",
-        department: "Sales",
-        joinDate: "2023-09-12",
-        status: "inactive",
-        phone: "+1 (555) 567-8901",
-        location: "Los Angeles, CA",
-        tasksCompleted: 15,
-        tasksInProgress: 1,
-      },
-    ]
+    TeamLoader();
+    // Load demo team members
+    const demoMembers: TeamMember[] = (() => {
+      const roles: TeamMember["role"][] = ["admin", "manager", "member"]
+      const departments = ["Engineering", "Design", "Marketing", "Sales"]
+      const locations = [
+        "San Francisco, CA",
+        "New York, NY",
+        "Austin, TX",
+        "Seattle, WA",
+        "Los Angeles, CA",
+      ]
+
+      return Array.from({ length: 60 }, (_, i) => {
+        const index = i + 1
+
+        return {
+          id: index.toString(),
+          name: `User ${index}`,
+          email: `user${index}@company.com`,
+          role: roles[i % roles.length],
+          department: departments[i % departments.length],
+          createdAt: `2023-${String((i % 12) + 1).padStart(2, "0")}-15`,
+          status: i % 5 === 0 ? "inactive" : "active", // ~20% inactive
+          phone: `+1 (555) ${100 + i}-${String(1000 + i).slice(-4)}`,
+          location: locations[i % locations.length],
+          tasksCompleted: Math.floor(Math.random() * 50) + 10,
+          tasksInProgress: Math.floor(Math.random() * 6),
+        }
+      })
+    })()
+
     setTeamMembers(demoMembers)
   }, [])
 
@@ -164,7 +161,7 @@ export function TeamView({ isAdmin }: TeamViewProps) {
       const member: TeamMember = {
         id: Date.now().toString(),
         ...newMember,
-        joinDate: new Date().toISOString().split("T")[0],
+        createdAt: new Date().toISOString().split("T")[0],
         status: "active",
         tasksCompleted: 0,
         tasksInProgress: 0,
@@ -411,12 +408,20 @@ export function TeamView({ isAdmin }: TeamViewProps) {
         </TabsList>
 
         <TabsContent value="all" className="space-y-4 mt-6">
-          <TeamMemberTable
+           
+        <TeamMembersTable
+          members={teamMembers}
+          isAdmin={isAdmin}
+          isActive={isActive}
+          onRemoveMember={handleRemoveMember}
+          onUpdateRole={handleUpdateMemberRole}
+        />
+          {/* <TeamMemberTable
             members={teamMembers}
             isAdmin={isAdmin}
             onRemoveMember={handleRemoveMember}
             onUpdateRole={handleUpdateMemberRole}
-          />
+          /> */}
         </TabsContent>
 
         <TabsContent value="active" className="space-y-4 mt-6">
@@ -440,7 +445,7 @@ export function TeamView({ isAdmin }: TeamViewProps) {
     </div>
   )
 }
-
+ 
 function TeamMemberTable({
   members,
   isAdmin,
@@ -452,6 +457,17 @@ function TeamMemberTable({
   onRemoveMember: (id: string) => void
   onUpdateRole: (id: string, role: TeamMember["role"]) => void
 }) {
+  const ITEMS_PER_PAGE = 10
+  const [currentPage, setCurrentPage] = useState(1)
+
+  /* 📄 Pagination logic */
+  const totalPages = Math.ceil(members.length / ITEMS_PER_PAGE)
+
+  const paginatedMembers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return members.slice(start, start + ITEMS_PER_PAGE)
+  }, [members, currentPage])
+
   const getRoleIcon = (role: string) => {
     switch (role) {
       case "admin":
@@ -488,8 +504,9 @@ function TeamMemberTable({
             {isAdmin && <TableHead className="text-right">Actions</TableHead>}
           </TableRow>
         </TableHeader>
+
         <TableBody>
-          {members.map((member) => (
+          {paginatedMembers.map((member) => (
             <TableRow key={member.id}>
               <TableCell>
                 <div className="flex items-center space-x-3">
@@ -511,23 +528,39 @@ function TeamMemberTable({
                   </div>
                 </div>
               </TableCell>
+
               <TableCell>
                 <div className="flex items-center space-x-2">
                   {getRoleIcon(member.role)}
-                  <Badge variant={getRoleBadgeVariant(member.role) as any}>{member.role}</Badge>
+                  <Badge variant={getRoleBadgeVariant(member.role) as any}>
+                    {member.role}
+                  </Badge>
                 </div>
               </TableCell>
+
               <TableCell>{member.department}</TableCell>
+
               <TableCell>
                 <div className="text-sm">
                   <div>{member.tasksCompleted} completed</div>
-                  <div className="text-muted-foreground">{member.tasksInProgress} in progress</div>
+                  <div className="text-muted-foreground">
+                    {member.tasksInProgress} in progress
+                  </div>
                 </div>
               </TableCell>
+
               <TableCell>
-                <Badge variant={member.status === "active" ? "default" : "secondary"}>{member.status}</Badge>
+                <Badge
+                  variant={member.status === "active" ? "default" : "secondary"}
+                >
+                  {member.status}
+                </Badge>
               </TableCell>
-              <TableCell>{new Date(member.joinDate).toLocaleDateString()}</TableCell>
+
+              <TableCell>
+                {new Date(member.createdAt).toLocaleDateString()}
+              </TableCell>
+
               {isAdmin && (
                 <TableCell className="text-right">
                   <DropdownMenu>
@@ -536,20 +569,33 @@ function TeamMemberTable({
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
+
                     <DropdownMenuContent align="end">
                       <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
                       <DropdownMenuItem>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Profile
                       </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onUpdateRole(member.id, "admin")}>Make Admin</DropdownMenuItem>
+
+                      <DropdownMenuItem onClick={() => onUpdateRole(member.id, "admin")}>
+                        Make Admin
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onUpdateRole(member.id, "manager")}>
                         Make Manager
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onUpdateRole(member.id, "member")}>Make Member</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onUpdateRole(member.id, "member")}>
+                        Make Member
+                      </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => onRemoveMember(member.id)} className="text-destructive">
+
+                      <DropdownMenuItem
+                        onClick={() => onRemoveMember(member.id)}
+                        className="text-destructive"
+                      >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Remove Member
                       </DropdownMenuItem>
@@ -561,6 +607,33 @@ function TeamMemberTable({
           ))}
         </TableBody>
       </Table>
+
+      {/* 📌 PAGER */}
+      <div className="flex items-center justify-between px-4 py-3 border-t">
+        <div className="text-sm text-muted-foreground">
+          Page {currentPage} of {totalPages}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </Card>
   )
 }

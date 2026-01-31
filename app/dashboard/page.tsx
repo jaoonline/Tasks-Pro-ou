@@ -86,7 +86,7 @@ export default function DashboardPage() {
       case "calendar":
         return <CalendarView />
       case "team":
-        return <TeamView />
+        return <TeamView isAdmin= { false }/>
       case "analytics":
         return <AnalyticsView />
       case "messages":

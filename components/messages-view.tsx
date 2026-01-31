@@ -61,7 +61,7 @@ interface CallState {
   participantName: string
   participantAvatar?: string
 }
-
+ 
 export function MessagesView() {
   const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
@@ -320,7 +320,7 @@ export function MessagesView() {
                   <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
                     <div className="absolute inset-0 flex items-center justify-center">
                       {callState.isVideoEnabled ? (
-                        <div className="text-muted-foreground">Remote Video</div>
+                        <div className="text-muted-foreground">Remote Video m</div>
                       ) : (
                         <div className="space-y-2 text-center">
                           <VideoOff className="h-16 w-16 mx-auto text-muted-foreground" />
